@@ -148,7 +148,7 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
                         y: targetFruit.y,
                         icon: charm.icon,
                         rotation: (Math.random() - 0.5) * 0.5,
-                        scale: targetFruit.radius / 20, 
+                        scale: targetFruit.radius / 30, // 调小挂件大小
                         state: 'FLOATING',
                         speechBubble: { text: "哇!", timer: 60 }
                     });
@@ -200,7 +200,7 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
         // 2. 更新装饰挂件位置
         decorationsRef.current.forEach(dec => {
             if (dec.state === 'FLOATING') {
-                // 智能停靠逻辑：只停靠左右，且寻找空位
+                // 智能停靠逻辑：只停靠左右，且寻找空位，往上面飘
                 if (dec.targetX === undefined) {
                     // 随机选择左侧或右侧
                     const isLeft = Math.random() > 0.5;
@@ -208,14 +208,14 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
                     
                     dec.targetX = isLeft ? padding + Math.random() * 10 : width - padding - Math.random() * 10;
                     
-                    // 寻找不重叠的 Y 坐标
-                    // 避开顶部 Header区域 (0-150) 和 底部区域
-                    let bestY = 160 + Math.random() * (height - 320); 
+                    // 寻找不重叠的 Y 坐标，往上面飘（Y值更小，在顶部区域）
+                    // 避开顶部 Header区域 (0-150)，挂件在150-300的范围内（上面区域）
+                    let bestY = 150 + Math.random() * 150; // 改为上面区域：150-300
                     let maxMinDist = -1; // 寻找"距离最近邻居最远"的位置
                     
                     // 尝试 5 次随机位置，选最好的一个
                     for(let attempt=0; attempt<5; attempt++) {
-                        const candidateY = 160 + Math.random() * (height - 320);
+                        const candidateY = 150 + Math.random() * 150; // 上面区域
                         let minDistToNeighbor = 9999;
                         
                         // 检查同侧的挂件

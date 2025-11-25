@@ -30,6 +30,7 @@ export const TetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlay
     const pieceRef = useRef({ shape: [] as number[][], x: 0, y: 0, colorIdx: 0 });
     const dropCounterRef = useRef(0);
     const dropIntervalRef = useRef(50); // Frames
+    const initializedRef = useRef(false); // Track if game has been initialized
     
     // UI State for score? Parent handles it.
     
@@ -148,11 +149,12 @@ export const TetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlay
         dropCounterRef.current = 0;
     };
 
-    // Init
+    // Init - only on first start, not on resume
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !initializedRef.current) {
             initGrid();
             spawnPiece();
+            initializedRef.current = true;
         }
     }, [isPlaying]);
 

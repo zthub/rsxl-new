@@ -29,6 +29,7 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
     const shapesRef = useRef<DragShape[]>([]);
     const draggingShapeRef = useRef<DragShape | null>(null);
     const gameOverRef = useRef(false);
+    const initializedRef = useRef(false); // Track if game has been initialized
 
     // Level & Timer State
     const [level, setLevel] = useState(1);
@@ -42,12 +43,13 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
     const sidebarSize = isPortrait ? height * 0.28 : Math.max(240, width * 0.25); 
     const mainSize = isPortrait ? height - sidebarSize : width - sidebarSize;
     
-    // Radius 4 means 5 cells per side
+    // Radius 4 means 5 cells per side (keep original size)
     const BOARD_RADIUS = 4; 
     const availW = isPortrait ? width : mainSize;
     const availH = isPortrait ? mainSize : height;
     const minDim = Math.min(availW, availH);
-    const HEX_SIZE = Math.floor(minDim / ((BOARD_RADIUS * 2 + 1) * 1.75)); 
+    // Increase divisor to make hexagons smaller, shrinking overall board size
+    const HEX_SIZE = Math.floor(minDim / ((BOARD_RADIUS * 2 + 1) * 2.2)); 
 
     // Helpers
     const getHexCorners = (x: number, y: number, size: number) => {
@@ -132,18 +134,23 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
     const refillShapes = useCallback(() => {
         const slots = [];
         if (isPortrait) {
-            const spacingX = width / 3;
+            // Distribute shapes horizontally, avoiding right edge
+            const spacingX = width / 4; // Use 4 divisions for better spacing
             const barY = height - sidebarSize * 0.6; 
-            slots.push({ x: spacingX * 0.5, y: barY });
-            slots.push({ x: spacingX * 1.5, y: barY });
-            slots.push({ x: spacingX * 2.5, y: barY });
+            slots.push({ x: spacingX * 1, y: barY });      // Left
+            slots.push({ x: spacingX * 2, y: barY });      // Center
+            slots.push({ x: spacingX * 3, y: barY });      // Right (but not at edge)
         } else {
-            // Move left: width - sidebarSize * 0.8 (was 0.55) to keep away from right edge
-            const barX = width - sidebarSize * 0.8; 
-            const spacingY = height / 4;
-            slots.push({ x: barX, y: spacingY * 1 + 20 });
-            slots.push({ x: barX, y: spacingY * 2 + 20 });
-            slots.push({ x: barX, y: spacingY * 3 + 20 });
+            // Distribute shapes evenly in the right sidebar area, slightly left of center
+            const sidebarLeft = width - sidebarSize;
+            const centerX = sidebarLeft + sidebarSize * 0.45; // Slightly left of center for better visual balance
+            // Distribute vertically with more spacing: top, middle, bottom
+            const topY = height * 0.25;    // Top quarter
+            const midY = height * 0.5;      // Middle
+            const botY = height * 0.75;     // Bottom quarter
+            slots.push({ x: centerX, y: topY });
+            slots.push({ x: centerX, y: midY });
+            slots.push({ x: centerX, y: botY });
         }
 
         for(let i=0; i<3; i++) {
@@ -159,9 +166,9 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         }
     }, [isPortrait, width, height, sidebarSize]);
 
-    // Init Game
+    // Init Game - only on first start, not on resume
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !initializedRef.current) {
             initBoard();
             shapesRef.current = [];
             refillShapes();
@@ -170,6 +177,7 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
             setLevelScore(0);
             setShowLevelUp(false);
             setTimeLeft(180); // Reset timer
+            initializedRef.current = true;
         }
     }, [isPlaying, initBoard, refillShapes]); 
 
@@ -328,8 +336,8 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         draggingShapeRef.current = null;
 
         const centerX = isPortrait ? width / 2 : (width - sidebarSize) / 2;
-        // Adjusted centerY to push board down (increased to +85 for extra top padding)
-        const centerY = (isPortrait ? (height - sidebarSize) / 2 : height / 2) + 85;
+        // Center the board vertically (removed offset to center it properly)
+        const centerY = isPortrait ? (height - sidebarSize) / 2 : height / 2;
         
         const {q, r} = pixelToHex(shape.currentX, shape.currentY, centerX, centerY, HEX_SIZE);
         
@@ -380,8 +388,8 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         ctx.fillRect(0, 0, width, height);
         
         const centerX = isPortrait ? width / 2 : (width - sidebarSize) / 2;
-        // Adjusted centerY for drawing board as well (matching pointer logic)
-        const centerY = (isPortrait ? (height - sidebarSize) / 2 : height / 2) + 85;
+        // Center the board vertically (matching pointer logic)
+        const centerY = isPortrait ? (height - sidebarSize) / 2 : height / 2;
 
         // Draw Board
         boardRef.current.forEach((color, key) => {

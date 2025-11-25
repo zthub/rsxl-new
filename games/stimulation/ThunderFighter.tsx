@@ -88,10 +88,11 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         screenShake: 0,
         redFlash: 0,
     });
+    const initializedRef = useRef(false); // Track if game has been initialized
 
-    // 初始化 - 仅在 isPlaying 变为 true 时重置，移除 width/height 依赖防止Resize导致重置
+    // 初始化 - 仅在第一次 isPlaying 变为 true 时重置，移除 width/height 依赖防止Resize导致重置
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !initializedRef.current) {
             gameState.current = {
                 player: { 
                     id: 0, x: width / 2, y: height - 100, width: 44, height: 60, 
@@ -105,6 +106,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
                 lastShotTime: 0, enemySpawnTimer: 0, difficultyLevel: 1, score: 0, nextBossScore: 3000,
                 screenShake: 0, redFlash: 0
             };
+            initializedRef.current = true;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPlaying]); 

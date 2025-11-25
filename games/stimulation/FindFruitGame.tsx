@@ -17,6 +17,7 @@ export const FindFruitGame: React.FC<GameComponentProps> = ({ width, height, isP
     const scatteredFruitsRef = useRef<ScatteredFruit[]>([]);
     const targetFruitsRef = useRef<number[]>([]);
     const foundTargetsRef = useRef<boolean[]>([]);
+    const initializedRef = useRef(false); // Track if game has been initialized
 
     const initLevel = useCallback(() => {
         const minDimension = Math.min(width, height);
@@ -74,8 +75,12 @@ export const FindFruitGame: React.FC<GameComponentProps> = ({ width, height, isP
         }
     }, [width, height]);
 
+    // Init - only on first start, not on resume
     useEffect(() => {
-        if (isPlaying) initLevel();
+        if (isPlaying && !initializedRef.current) {
+            initLevel();
+            initializedRef.current = true;
+        }
     }, [isPlaying, initLevel]);
 
     const handlePointerDown = (e: React.PointerEvent) => {

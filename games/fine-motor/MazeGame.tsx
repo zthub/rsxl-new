@@ -21,6 +21,7 @@ export const MazeGame: React.FC<GameComponentProps> = ({ width, height, isPlayin
     const mazeRef = useRef<Cell[]>([]);
     const playerRef = useRef({ c: 0, r: 0 }); 
     const goalRef = useRef({ c: 0, r: 0 });
+    const initializedRef = useRef(false); // Track if game has been initialized
 
     // Virtual Joystick State
     const isDraggingRef = useRef(false);
@@ -112,8 +113,12 @@ export const MazeGame: React.FC<GameComponentProps> = ({ width, height, isPlayin
         
     }, [cols, rows, level]);
 
+    // Init - only on first start, not on resume
     useEffect(() => {
-        if (isPlaying) generateMaze();
+        if (isPlaying && !initializedRef.current) {
+            generateMaze();
+            initializedRef.current = true;
+        }
     }, [isPlaying, generateMaze]);
 
     // Movement Logic

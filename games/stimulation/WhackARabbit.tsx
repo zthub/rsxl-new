@@ -5,8 +5,19 @@ import { renderCommonBackground } from '../../utils/visualRendering';
 import { playSound, playNote } from '../../utils/gameUtils';
 
 // Types
-type EntityType = 'RABBIT' | 'BOMB' | 'EMPTY';
+type EntityType = 'RABBIT' | 'GOLDEN_RABBIT' | 'BOMB' | 'EMPTY';
 type EntityState = 'RISING' | 'WAITING' | 'HIDING' | 'HIT' | 'GONE';
+
+// 阶段定义
+interface Stage {
+    name: string;
+    minScore: number;
+    spawnInterval: number;
+    bombChance: number;
+    goldenRabbitChance: number;
+    waitTime: number;
+    color: string;
+}
 
 interface Hole {
     x: number;
@@ -29,6 +40,15 @@ interface Hammer {
 
 const MISS_MESSAGES = ["我跑啦", "打不到", "略略略", "下次吧", "溜了溜了"];
 
+// 阶段配置 - 调慢速度，降低分数要求
+const STAGES: Stage[] = [
+    { name: '新手训练', minScore: 0, spawnInterval: 100, bombChance: 0.15, goldenRabbitChance: 0.05, waitTime: 110, color: '#10b981' },
+    { name: '进阶挑战', minScore: 800, spawnInterval: 85, bombChance: 0.25, goldenRabbitChance: 0.08, waitTime: 95, color: '#3b82f6' },
+    { name: '高手对决', minScore: 2000, spawnInterval: 65, bombChance: 0.35, goldenRabbitChance: 0.12, waitTime: 80, color: '#f59e0b' },
+    { name: '大师之路', minScore: 4000, spawnInterval: 45, bombChance: 0.45, goldenRabbitChance: 0.15, waitTime: 65, color: '#ef4444' },
+    { name: '传说级别', minScore: 7000, spawnInterval: 30, bombChance: 0.5, goldenRabbitChance: 0.2, waitTime: 50, color: '#a855f7' },
+];
+
 export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPlaying, onScore }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>(0);
@@ -41,6 +61,11 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
         hammer: { x: width/2, y: height/2, angle: 0, isStriking: false } as Hammer,
         spawnTimer: 0,
         spawnInterval: 80, // Frames
+        currentScore: 0,
+        currentStage: 0,
+        combo: 0,
+        maxCombo: 0,
+        stageChangeTimer: 0, // 阶段切换提示显示时间
     });
 
     // Initialize Holes
@@ -71,7 +96,44 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
         }
         stateRef.current.holes = newHoles;
         stateRef.current.spawnTimer = 0;
+        stateRef.current.currentScore = 0;
+        stateRef.current.currentStage = 0;
+        stateRef.current.combo = 0;
+        stateRef.current.maxCombo = 0;
+        stateRef.current.stageChangeTimer = 0;
     }, [width, height]);
+
+    // 游戏开始时重置状态
+    const initializedRef = useRef(false);
+    useEffect(() => {
+        if (isPlaying && !initializedRef.current) {
+            stateRef.current.currentScore = 0;
+            stateRef.current.currentStage = 0;
+            stateRef.current.combo = 0;
+            stateRef.current.maxCombo = 0;
+            stateRef.current.stageChangeTimer = 0;
+            stateRef.current.spawnTimer = 0;
+            stateRef.current.holes.forEach(hole => {
+                hole.entityType = 'EMPTY';
+                hole.entityState = 'GONE';
+                hole.animProgress = 0;
+                hole.timer = 0;
+            });
+            initializedRef.current = true;
+        } else if (!isPlaying) {
+            initializedRef.current = false;
+        }
+    }, [isPlaying]);
+
+    // 获取当前阶段
+    const getCurrentStage = (score: number): Stage => {
+        for (let i = STAGES.length - 1; i >= 0; i--) {
+            if (score >= STAGES[i].minScore) {
+                return STAGES[i];
+            }
+        }
+        return STAGES[0];
+    };
 
     // Handle Clicks
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -103,16 +165,35 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
                 clickY >= hitBoxTop && clickY <= hitBoxBottom + 20) {
                 
                 // Effective Hit
-                if (hole.entityType === 'RABBIT') {
+                if (hole.entityType === 'RABBIT' || hole.entityType === 'GOLDEN_RABBIT') {
+                    // 立即设置为HIT状态，防止后续显示miss消息
                     hole.entityState = 'HIT';
-                    hole.textEffect = { text: '+100', color: '#10b981', life: 40, yOffset: 0 };
-                    onScore(100);
+                    const isGolden = hole.entityType === 'GOLDEN_RABBIT';
+                    const baseScore = isGolden ? 250 : 80; // 降低基础分数
+                    const comboBonus = Math.min(stateRef.current.combo * 8, 150); // 降低连击奖励，最多150
+                    const totalScore = baseScore + comboBonus;
+                    
+                    stateRef.current.combo++;
+                    stateRef.current.maxCombo = Math.max(stateRef.current.maxCombo, stateRef.current.combo);
+                    
+                    const comboText = stateRef.current.combo > 1 ? ` x${stateRef.current.combo}` : '';
+                    const scoreText = isGolden ? `⭐ +${totalScore}${comboText}` : `+${totalScore}${comboText}`;
+                    hole.textEffect = { 
+                        text: scoreText, 
+                        color: isGolden ? '#fbbf24' : '#10b981', 
+                        life: 50, 
+                        yOffset: 0 
+                    };
+                    stateRef.current.currentScore += totalScore;
+                    onScore(totalScore);
                     playSound('correct');
                     hitMade = true;
                 } else if (hole.entityType === 'BOMB') {
                     hole.entityState = 'HIT';
                     hole.textEffect = { text: '💥 -50', color: '#ef4444', life: 40, yOffset: 0 };
+                    stateRef.current.currentScore = Math.max(0, stateRef.current.currentScore - 50);
                     onScore(-50);
+                    stateRef.current.combo = 0; // 连击中断
                     playSound('wrong');
                     hitMade = true;
                 }
@@ -147,20 +228,42 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
         renderCommonBackground(ctx, width, height, frameCountRef.current, visualAcuity);
 
         // 2. Logic Update
+        // 更新阶段
+        const newStage = getCurrentStage(state.currentScore);
+        const stageIndex = STAGES.findIndex(s => s === newStage);
+        if (stageIndex !== state.currentStage && stageIndex > state.currentStage) {
+            state.currentStage = stageIndex;
+            state.stageChangeTimer = 180; // 显示3秒（60fps * 3）
+            playSound('correct');
+        }
+        if (state.stageChangeTimer > 0) state.stageChangeTimer--;
+
+        // 根据阶段调整参数
+        const currentStageConfig = newStage;
+        state.spawnInterval = currentStageConfig.spawnInterval;
+
         state.spawnTimer++;
         if (state.spawnTimer > state.spawnInterval) {
             // Find empty holes
             const emptyHoles = state.holes.filter(h => h.entityType === 'EMPTY');
             if (emptyHoles.length > 0) {
                 const randomHole = emptyHoles[Math.floor(Math.random() * emptyHoles.length)];
-                randomHole.entityType = Math.random() > 0.25 ? 'RABBIT' : 'BOMB';
+                const rand = Math.random();
+                
+                // 根据阶段概率生成实体
+                if (rand < currentStageConfig.bombChance) {
+                    randomHole.entityType = 'BOMB';
+                } else if (rand < currentStageConfig.bombChance + currentStageConfig.goldenRabbitChance) {
+                    randomHole.entityType = 'GOLDEN_RABBIT';
+                } else {
+                    randomHole.entityType = 'RABBIT';
+                }
+                
                 randomHole.entityState = 'RISING';
                 randomHole.timer = 0;
                 randomHole.animProgress = 0;
             }
             state.spawnTimer = 0;
-            // Gradually increase speed
-            state.spawnInterval = Math.max(40, 80 - Math.floor(frameCountRef.current / 600)); 
         }
 
         // Update Holes
@@ -168,7 +271,8 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
             if (hole.entityType === 'EMPTY') return;
 
             const riseSpeed = 0.1;
-            const maxWait = hole.entityType === 'BOMB' ? 120 : 90; // Bombs stay longer to trick player
+            const currentStageConfig = getCurrentStage(state.currentScore);
+            const maxWait = hole.entityType === 'BOMB' ? currentStageConfig.waitTime + 30 : currentStageConfig.waitTime;
 
             switch (hole.entityState) {
                 case 'RISING':
@@ -186,13 +290,18 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
                     }
                     break;
                 case 'HIDING':
+                    // 如果已经被打中，不应该显示miss消息
+                    if (hole.entityState === 'HIT') {
+                        break;
+                    }
                     hole.animProgress -= riseSpeed;
                     if (hole.animProgress <= 0) {
                         hole.animProgress = 0;
-                        // Rabbit Miss Logic
-                        if (hole.entityType === 'RABBIT') {
+                        // Rabbit Miss Logic - 只有在没被打中的情况下才显示
+                        if (hole.entityType === 'RABBIT' || hole.entityType === 'GOLDEN_RABBIT') {
                             const msg = MISS_MESSAGES[Math.floor(Math.random() * MISS_MESSAGES.length)];
                             hole.textEffect = { text: msg, color: '#3b82f6', life: 60, yOffset: 0 };
+                            stateRef.current.combo = 0; // 连击中断
                             // Cute miss sound
                             playNote(600, 0.1, 0, 'sine');
                             setTimeout(() => playNote(400, 0.1, 0, 'sine'), 100);
@@ -241,9 +350,11 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
                 
                 const entityY = hy - popHeight + (rh * 0.2); // Start slightly inside
                 
-                if (hole.entityType === 'RABBIT') {
+                if (hole.entityType === 'RABBIT' || hole.entityType === 'GOLDEN_RABBIT') {
+                    const isGolden = hole.entityType === 'GOLDEN_RABBIT';
+                    
                     // Ears
-                    ctx.fillStyle = '#fce7f3'; // Pinkish ears
+                    ctx.fillStyle = isGolden ? '#fbbf24' : '#fce7f3'; // Golden or pinkish ears
                     ctx.beginPath();
                     ctx.ellipse(hx - rw*0.2, entityY - rw*0.6, rw*0.1, rw*0.3, -0.2, 0, Math.PI*2);
                     ctx.fill();
@@ -252,10 +363,22 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
                     ctx.fill();
 
                     // Head
-                    ctx.fillStyle = '#ffffff';
+                    ctx.fillStyle = isGolden ? '#fef3c7' : '#ffffff';
                     ctx.beginPath();
                     ctx.arc(hx, entityY, rw * 0.35, 0, Math.PI * 2);
                     ctx.fill();
+                    
+                    // Golden glow effect
+                    if (isGolden) {
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = '#fbbf24';
+                        ctx.beginPath();
+                        ctx.arc(hx, entityY, rw * 0.4, 0, Math.PI * 2);
+                        ctx.strokeStyle = '#fbbf24';
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
                     
                     // Face
                     ctx.fillStyle = '#000'; // Eyes
@@ -264,6 +387,15 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
                     
                     ctx.fillStyle = '#f472b6'; // Nose
                     ctx.beginPath(); ctx.arc(hx, entityY + rw*0.05, 4, 0, Math.PI*2); ctx.fill();
+                    
+                    // Golden star icon
+                    if (isGolden) {
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.font = '16px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('⭐', hx, entityY - rw*0.5);
+                    }
                     
                     // Hit Effect (Dizzy eyes)
                     if (hole.entityState === 'HIT') {
@@ -367,8 +499,60 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
         
         ctx.restore();
 
+        // 5. Render UI: Stage, Combo, Score
+        // currentStageConfig 已在上面声明，直接使用
+        
+        // 阶段提示
+        if (state.stageChangeTimer > 0) {
+            const alpha = Math.min(1, state.stageChangeTimer / 60);
+            ctx.save();
+            ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * alpha})`;
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.fillStyle = currentStageConfig.color;
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = currentStageConfig.color;
+            ctx.fillText('🎉 ' + currentStageConfig.name + ' 🎉', width/2, height/2 - 30);
+            
+            ctx.font = 'bold 24px sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(0,0,0,0.8)';
+            ctx.fillText('难度提升！', width/2, height/2 + 30);
+            ctx.restore();
+        }
+        
+        // 顶部信息栏
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillRect(10, 10, width - 20, 80);
+        
+        // 阶段显示
+        ctx.fillStyle = currentStageConfig.color;
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText('阶段: ' + currentStageConfig.name, 20, 20);
+        
+        // 连击显示
+        if (state.combo > 1) {
+            ctx.fillStyle = '#fbbf24';
+            ctx.font = 'bold 18px sans-serif';
+            ctx.fillText(`连击: ${state.combo} (最高: ${state.maxCombo})`, 20, 50);
+        }
+        
+        // 分数显示
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(`分数: ${state.currentScore}`, width - 20, 20);
+        ctx.restore();
+
         requestRef.current = requestAnimationFrame(animate);
-    }, [width, height, visualAcuity]);
+    }, [width, height, visualAcuity, onScore]);
 
     useEffect(() => {
         if (isPlaying) requestRef.current = requestAnimationFrame(animate);

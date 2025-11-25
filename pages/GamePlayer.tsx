@@ -50,6 +50,37 @@ export const GamePlayer: React.FC = () => {
 
   const [ammo, setAmmo] = useState(20); // Specific to shooter
 
+  // 进入全屏模式的函数
+  const enterFullscreen = () => {
+    const element = document.documentElement;
+    if (element.requestFullscreen) {
+      element.requestFullscreen().catch((err) => {
+        console.log('无法进入全屏模式:', err);
+      });
+    } else if ((element as any).webkitRequestFullscreen) {
+      // Safari
+      (element as any).webkitRequestFullscreen();
+    } else if ((element as any).msRequestFullscreen) {
+      // IE/Edge
+      (element as any).msRequestFullscreen();
+    }
+  };
+
+  // 退出全屏模式的函数
+  const exitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen().catch((err) => {
+        console.log('无法退出全屏模式:', err);
+      });
+    } else if ((document as any).webkitExitFullscreen) {
+      // Safari
+      (document as any).webkitExitFullscreen();
+    } else if ((document as any).msExitFullscreen) {
+      // IE/Edge
+      (document as any).msExitFullscreen();
+    }
+  };
+
   // Handle Resize
   useEffect(() => {
     const handleResize = () => {
@@ -64,6 +95,20 @@ export const GamePlayer: React.FC = () => {
     handleResize(); 
     setTimeout(handleResize, 100);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // 对于视频播放器，在组件挂载时自动进入全屏
+  useEffect(() => {
+    if (isVideoPlayer && isPlaying) {
+      enterFullscreen();
+    }
+  }, [isVideoPlayer, isPlaying]);
+
+  // 组件卸载时退出全屏
+  useEffect(() => {
+    return () => {
+      exitFullscreen();
+    };
   }, []);
 
   // Timer Logic
@@ -97,6 +142,8 @@ export const GamePlayer: React.FC = () => {
     setIsPlaying(true);
     setAmmo(20);
     setRestartKey(k => k + 1); // 强制刷新游戏组件
+    // 进入全屏模式
+    enterFullscreen();
   };
 
   const stopGame = () => setIsPlaying(false);
@@ -116,6 +163,8 @@ export const GamePlayer: React.FC = () => {
   };
 
   const goBack = () => {
+      // 退出全屏模式
+      exitFullscreen();
       navigate(`/module/${moduleId}`);
   };
 

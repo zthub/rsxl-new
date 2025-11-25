@@ -319,6 +319,7 @@ export const AnimalPuzzleGame: React.FC<GameComponentProps> = ({ width, height, 
     const [currentLevelIdx, setCurrentLevelIdx] = useState(0);
     const partsRef = useRef<PuzzlePart[]>([]);
     const [completed, setCompleted] = useState(false);
+    const initializedRef = useRef(false); // Track if game has been initialized
 
     // 布局参数
     const sidebarWidth = Math.max(200, width * 0.25);
@@ -341,8 +342,12 @@ export const AnimalPuzzleGame: React.FC<GameComponentProps> = ({ width, height, 
         setCompleted(false);
     }, [currentLevelIdx, width, height, mainWidth, sidebarWidth]);
 
+    // Init - only on first start, not on resume
     useEffect(() => {
-        if (isPlaying) initLevel();
+        if (isPlaying && !initializedRef.current) {
+            initLevel();
+            initializedRef.current = true;
+        }
     }, [isPlaying, initLevel]);
 
     const handleLevelComplete = () => {

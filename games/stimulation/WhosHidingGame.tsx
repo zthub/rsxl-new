@@ -25,6 +25,7 @@ export const WhosHidingGame: React.FC<GameComponentProps> = ({ width, height, is
     const requestRef = useRef<number>(0);
     const frameCountRef = useRef(0);
     const visualAcuity = localStorage.getItem('visualAcuity') || '0.2-0.4';
+    const initializedRef = useRef(false); // Track if game has been initialized
     
     // 初始化回合
     const startRound = useCallback(() => {
@@ -60,10 +61,11 @@ export const WhosHidingGame: React.FC<GameComponentProps> = ({ width, height, is
 
     }, [isPlaying]);
 
-    // 初始化游戏
+    // 初始化游戏 - only on first start, not on resume
     useEffect(() => {
-        if (isPlaying) {
+        if (isPlaying && !initializedRef.current) {
             startRound();
+            initializedRef.current = true;
         }
     }, [isPlaying, startRound]);
 
