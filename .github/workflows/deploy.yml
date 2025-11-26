@@ -31,7 +31,7 @@ jobs:
       # ============ 新增：部署到 Netlify ============
       - name: Deploy to Netlify
         run: |
-          npm install -g netlify-cli
+          npm install -g netlify-cli@latest
           netlify deploy --prod \
             --dir=dist \
             --site-id=${{ secrets.NETLIFY_SITE_ID }} \
