@@ -34,20 +34,25 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g2-2', title: '精准点击', description: '点击屏幕上出现的微小目标', difficulty: 'Medium' },
       { id: 'g2-3', title: '迷宫探险', description: '走出随机生成的复杂迷宫', difficulty: 'Hard' },
       { id: 'g2-4', title: '六角消消乐', description: '拖动钻石填满六边形网格消除', difficulty: 'Medium' },
-      { id: 'g2-5', title: '俄罗斯方块', description: '经典消除游戏，锻炼手眼协调', difficulty: 'Medium' },
+      { id: 'g2-5', title: '传统俄罗斯方块', description: '经典消除游戏，锻炼手眼协调', difficulty: 'Medium' },
+      { id: 'g2-6', title: '俄罗斯方块新', description: '拖动和旋转带动物图案的方块，消除完整行', difficulty: 'Easy' },
+      { id: 'g2-7', title: '动物消消乐', description: '点击相同动物消除，阻止方块堆满', difficulty: 'Medium' },
+      { id: 'g2-8', title: '拆炸弹', description: '在倒计时结束前找出正确炸弹并点击', difficulty: 'Medium' },
+      { id: 'g2-9', title: '保护小鸡', description: '快速找出老鹰，避免误点到小鸡', difficulty: 'Medium' },
+      { id: 'g2-10', title: '找红豆', description: '在一堆相似小豆中精准找出红豆', difficulty: 'Medium' },
     ]
   },
   {
     id: 'simultaneous',
     title: '同时视',
-    description: '利用红绿眼镜分视原理，训练双眼同时感知物像。',
+    description: '利用红蓝眼镜分视原理，训练双眼同时感知物像。',
     colorFrom: 'from-green-400',
     colorTo: 'to-emerald-600',
     iconName: 'Eye',
     games: [
-      { id: 'g3-1', title: '红绿找茬', description: '戴上红绿眼镜找出不同之处', difficulty: 'Medium' },
-      { id: 'g3-2', title: '笼中捉鸟', description: '将笼子和小鸟重合在一起', difficulty: 'Easy' },
-      { id: 'g3-3', title: '双眼拼图', description: '双眼分别看到部分碎片完成拼图', difficulty: 'Hard' },
+      { id: 'g3-1', title: '红蓝俄罗斯方块', description: '红蓝交替方块，训练双眼同视协调', difficulty: 'Medium' },
+      { id: 'g3-2', title: '红蓝贪吃蛇', description: '红色小蛇吃蓝色小点，紫色背景同时视训练', difficulty: 'Medium' },
+      { id: 'g3-3', title: '红蓝配对消除', description: '同时看到红蓝图案进行配对消除，强化双眼同时感知', difficulty: 'Medium' },
     ]
   },
   {
@@ -59,7 +64,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
     iconName: 'Layers',
     games: [
       { id: 'g4-1', title: '圆环融合', description: '通过调节眼肌融合两个圆环', difficulty: 'Medium' },
-      { id: 'g4-2', title: '飞行训练', description: '保持飞机在轨道中央', difficulty: 'Hard' },
+      { id: 'g4-2', title: '融合点点击', description: '点击红蓝点之间的中点进行融合，训练双眼融合能力', difficulty: 'Easy' },
     ]
   },
   {
@@ -71,8 +76,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
     iconName: 'Box',
     games: [
       { id: 'g5-1', title: '随机点立体图', description: '在噪点中寻找隐藏的3D图形', difficulty: 'Hard' },
-      { id: 'g5-2', title: '深浅辨识', description: '判断物体的前后距离', difficulty: 'Medium' },
-      { id: 'g5-3', title: '立体接球', description: '判断球的落点进行接球', difficulty: 'Hard' },
+      { id: 'g5-2', title: '深度接球', description: '判断球的深度并移动到正确位置接球，训练立体视觉', difficulty: 'Hard' },
     ]
   },
   {

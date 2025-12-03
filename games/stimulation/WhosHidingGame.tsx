@@ -211,6 +211,29 @@ export const WhosHidingGame: React.FC<GameComponentProps> = ({ width, height, is
         }
     }, [phase]);
 
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
+
     useEffect(() => {
         if (isPlaying) requestRef.current = requestAnimationFrame(animate);
         return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
@@ -219,7 +242,7 @@ export const WhosHidingGame: React.FC<GameComponentProps> = ({ width, height, is
     return (
         <div className="relative w-full h-full overflow-hidden">
             {/* 1. Canvas 层 (背景 + 窗户动画) */}
-            <canvas ref={canvasRef} width={width} height={height} className="absolute inset-0 block" />
+            <canvas ref={canvasRef} className="absolute inset-0 block" />
 
             {/* 2. 交互 UI 层 */}
             <div className="absolute inset-0 flex flex-col justify-end pb-12 items-center pointer-events-none">

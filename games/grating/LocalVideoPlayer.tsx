@@ -2,7 +2,7 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { GameComponentProps } from '../../types';
 import { renderCommonBackground } from '../../utils/visualRendering';
-import { Upload, Video as VideoIcon, Trash2 } from 'lucide-react';
+import { Upload, Video as VideoIcon, Trash2, Maximize2, Eye, EyeOff } from 'lucide-react';
 
 export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, isPlaying }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -13,6 +13,16 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
     const [videoSrc, setVideoSrc] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // 视频窗口大小状态
+    const [videoSize, setVideoSize] = useState({ width: 480, height: 270 });
+    const [isResizing, setIsResizing] = useState(false);
+    const resizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
+    const videoContainerRef = useRef<HTMLDivElement>(null);
+    
+    // 透明度状态
+    const [opacity, setOpacity] = useState(1.0);
+    const [showOpacityControl, setShowOpacityControl] = useState(false);
 
     // 背景动画循环
     const animate = useCallback(() => {
@@ -25,6 +35,29 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
         renderCommonBackground(ctx, width, height, frameCountRef.current, visualAcuity);
         requestRef.current = requestAnimationFrame(animate);
     }, [width, height, visualAcuity]);
+
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
 
     useEffect(() => {
         if (isPlaying) {
@@ -62,20 +95,81 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
         };
     }, []);
 
+    // 拖拽调整大小处理
+    const handleResizeStart = (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!videoContainerRef.current) return;
+        
+        const rect = videoContainerRef.current.getBoundingClientRect();
+        setIsResizing(true);
+        resizeStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            startWidth: videoSize.width,
+            startHeight: videoSize.height
+        };
+        
+        // 设置全局指针捕获
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const handleResizeMove = (e: React.PointerEvent) => {
+        if (!isResizing || !resizeStartRef.current) return;
+        e.preventDefault();
+        
+        const deltaX = e.clientX - resizeStartRef.current.x;
+        const deltaY = e.clientY - resizeStartRef.current.y;
+        
+        // 计算新尺寸（保持16:9比例或自由调整）
+        const newWidth = Math.max(240, Math.min(width * 0.9, resizeStartRef.current.startWidth + deltaX));
+        const newHeight = Math.max(135, Math.min(height * 0.9, resizeStartRef.current.startHeight + deltaY));
+        
+        setVideoSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleResizeEnd = (e: React.PointerEvent) => {
+        if (!isResizing) return;
+        e.preventDefault();
+        setIsResizing(false);
+        resizeStartRef.current = null;
+        
+        // 释放指针捕获
+        try {
+            (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+        } catch (err) {
+            // 忽略错误
+        }
+    };
+
+    // 重置大小到默认值
+    const resetSize = () => {
+        setVideoSize({ width: 480, height: 270 });
+    };
+    
+    // 重置透明度到默认值
+    const resetOpacity = () => {
+        setOpacity(1.0);
+    };
+
     return (
         <div className="relative w-full h-full overflow-hidden bg-black">
             {/* 1. 背景层 */}
-            <canvas ref={canvasRef} width={width} height={height} className="absolute inset-0 block" />
+            <canvas ref={canvasRef} className="absolute inset-0 block" />
 
             {/* 2. 视频区域 */}
             <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                 <div 
+                    ref={videoContainerRef}
                     className="pointer-events-auto relative bg-slate-900 rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 backdrop-blur-sm flex flex-col items-center justify-center"
                     style={{
-                        width: '480px',
+                        width: `${videoSize.width}px`,
+                        height: `${videoSize.height}px`,
                         maxWidth: '90%',
-                        aspectRatio: '16/9',
-                        minHeight: '270px'
+                        maxHeight: '90%',
+                        minWidth: '240px',
+                        minHeight: '135px',
+                        opacity: opacity
                     }}
                 >
                     {videoSrc ? (
@@ -89,11 +183,69 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
                             />
                             <button 
                                 onClick={clearVideo}
-                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
+                                className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg z-20"
                                 title="移除视频"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>
+                            {/* 重置大小按钮 */}
+                            <div className="absolute top-2 left-2 flex gap-2 z-20">
+                                <button 
+                                    onClick={resetSize}
+                                    className="p-2 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600 shadow-lg"
+                                    title="重置窗口大小"
+                                >
+                                    <Maximize2 className="w-4 h-4" />
+                                </button>
+                                <button 
+                                    onClick={() => setShowOpacityControl(!showOpacityControl)}
+                                    className="p-2 bg-purple-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-600 shadow-lg"
+                                    title="调整透明度"
+                                >
+                                    {opacity < 1 ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            {/* 透明度控制面板 */}
+                            {showOpacityControl && (
+                                <div className="absolute top-12 left-2 bg-white/95 backdrop-blur-md rounded-lg p-4 shadow-xl z-30 min-w-[200px]">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-sm font-bold text-slate-800">透明度</span>
+                                        <button 
+                                            onClick={resetOpacity}
+                                            className="text-xs text-blue-600 hover:text-blue-800 font-bold"
+                                        >
+                                            重置
+                                        </button>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.05"
+                                        value={opacity}
+                                        onChange={(e) => setOpacity(parseFloat(e.target.value))}
+                                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                                    />
+                                    <div className="flex justify-between text-xs text-slate-600 mt-1">
+                                        <span>0%</span>
+                                        <span className="font-bold text-purple-600">{Math.round(opacity * 100)}%</span>
+                                        <span>100%</span>
+                                    </div>
+                                </div>
+                            )}
+                            {/* 拖拽调整大小手柄 */}
+                            <div
+                                className="absolute bottom-0 right-0 w-6 h-6 bg-white/80 rounded-tl-lg cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center"
+                                onPointerDown={handleResizeStart}
+                                onPointerMove={handleResizeMove}
+                                onPointerUp={handleResizeEnd}
+                                onPointerCancel={handleResizeEnd}
+                                style={{
+                                    cursor: isResizing ? 'nwse-resize' : 'nwse-resize'
+                                }}
+                            >
+                                <div className="w-3 h-3 border-2 border-slate-600 rounded-sm"></div>
+                            </div>
                         </div>
                     ) : (
                         <div className="text-center p-6 space-y-4">

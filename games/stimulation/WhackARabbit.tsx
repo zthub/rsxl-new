@@ -73,11 +73,21 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
         const rows = 2;
         const cols = 3;
         const marginX = width * 0.15;
-        const marginY = height * 0.25;
+        // 动态计算顶部边距：根据屏幕高度百分比，但确保最小可用空间
+        // 横屏模式下 height 较小，使用百分比更合适
+        const topMargin = height * 0.2; // 20% 顶部边距
+        const bottomMargin = height * 0.1; // 10% 底部边距
+        const marginY = topMargin;
         const availW = width - marginX * 2;
-        const availH = height - marginY * 2;
+        const availH = height - marginY - bottomMargin;
         const cellW = availW / cols;
         const cellH = availH / rows;
+
+        // 确保兔子洞有最小尺寸，适配横屏模式
+        const minHoleSize = Math.min(width, height) * 0.12; // 最小为屏幕较小边的12%
+        const baseSize = Math.min(cellW, cellH) * 0.7;
+        const holeWidth = Math.max(baseSize, minHoleSize);
+        const holeHeight = holeWidth * 0.35; // 保持椭圆比例
 
         const newHoles: Hole[] = [];
         for (let r = 0; r < rows; r++) {
@@ -85,8 +95,8 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
                 newHoles.push({
                     x: marginX + c * cellW + cellW / 2,
                     y: marginY + r * cellH + cellH / 2,
-                    width: Math.min(cellW, cellH) * 0.7,
-                    height: Math.min(cellW, cellH) * 0.25, // Ellipse height
+                    width: holeWidth,
+                    height: holeHeight, // Ellipse height
                     entityType: 'EMPTY',
                     entityState: 'GONE',
                     animProgress: 0,
@@ -458,14 +468,17 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
             if (hole.textEffect) {
                 const fx = hole.textEffect;
                 ctx.save();
-                ctx.font = 'bold 24px "Comic Sans MS"';
+                // 响应式文字大小
+                const effectFontSize = Math.min(24, Math.min(width, height) * 0.05);
+                const effectOffset = Math.max(50, Math.min(width, height) * 0.1);
+                ctx.font = `bold ${effectFontSize}px "Comic Sans MS"`;
                 ctx.fillStyle = fx.color;
                 ctx.strokeStyle = 'white';
-                ctx.lineWidth = 3;
+                ctx.lineWidth = Math.max(2, effectFontSize * 0.12);
                 ctx.textAlign = 'center';
                 
-                ctx.strokeText(fx.text, hx, hy - 50 - fx.yOffset);
-                ctx.fillText(fx.text, hx, hy - 50 - fx.yOffset);
+                ctx.strokeText(fx.text, hx, hy - effectOffset - fx.yOffset);
+                ctx.fillText(fx.text, hx, hy - effectOffset - fx.yOffset);
                 
                 fx.yOffset += 1;
                 fx.life--;
@@ -509,50 +522,73 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
             ctx.fillStyle = `rgba(0, 0, 0, ${0.7 * alpha})`;
             ctx.fillRect(0, 0, width, height);
             
+            // 响应式文字大小
+            const titleFontSize = Math.min(48, width * 0.08, height * 0.12);
+            const subtitleFontSize = Math.min(24, width * 0.04, height * 0.06);
+            
             ctx.fillStyle = currentStageConfig.color;
-            ctx.font = 'bold 48px sans-serif';
+            ctx.font = `bold ${titleFontSize}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.shadowBlur = 20;
             ctx.shadowColor = currentStageConfig.color;
-            ctx.fillText('🎉 ' + currentStageConfig.name + ' 🎉', width/2, height/2 - 30);
+            ctx.fillText('🎉 ' + currentStageConfig.name + ' 🎉', width/2, height/2 - height * 0.05);
             
-            ctx.font = 'bold 24px sans-serif';
+            ctx.font = `bold ${subtitleFontSize}px sans-serif`;
             ctx.fillStyle = '#fff';
             ctx.shadowBlur = 10;
             ctx.shadowColor = 'rgba(0,0,0,0.8)';
-            ctx.fillText('难度提升！', width/2, height/2 + 30);
+            ctx.fillText('难度提升！', width/2, height/2 + height * 0.05);
             ctx.restore();
         }
         
-        // 顶部信息栏
+        // 顶部信息栏 - 只显示当前阶段，无背景
+        // 动态计算位置：标题栏高度 + 间距
+        const titleBarHeight = Math.min(100, height * 0.15); // 标题栏高度，横屏时使用百分比
+        const infoBarY = titleBarHeight + 10;
         ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        ctx.fillRect(10, 10, width - 20, 80);
         
-        // 阶段显示
+        // 响应式文字大小
+        const stageFontSize = Math.min(20, width * 0.04, height * 0.05);
+        const padding = Math.max(10, width * 0.02);
+        
+        // 阶段显示 - 只显示阶段名称
         ctx.fillStyle = currentStageConfig.color;
-        ctx.font = 'bold 20px sans-serif';
+        ctx.font = `bold ${stageFontSize}px sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'top';
-        ctx.fillText('阶段: ' + currentStageConfig.name, 20, 20);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = Math.max(2, stageFontSize * 0.15);
+        ctx.strokeText(currentStageConfig.name, padding, infoBarY);
+        ctx.fillText(currentStageConfig.name, padding, infoBarY);
         
-        // 连击显示
-        if (state.combo > 1) {
-            ctx.fillStyle = '#fbbf24';
-            ctx.font = 'bold 18px sans-serif';
-            ctx.fillText(`连击: ${state.combo} (最高: ${state.maxCombo})`, 20, 50);
-        }
-        
-        // 分数显示
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText(`分数: ${state.currentScore}`, width - 20, 20);
         ctx.restore();
 
         requestRef.current = requestAnimationFrame(animate);
     }, [width, height, visualAcuity, onScore]);
+
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
 
     useEffect(() => {
         if (isPlaying) requestRef.current = requestAnimationFrame(animate);
@@ -562,8 +598,6 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
     return (
         <canvas 
             ref={canvasRef} 
-            width={width} 
-            height={height} 
             className="block touch-none cursor-none" // Hide default cursor
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}

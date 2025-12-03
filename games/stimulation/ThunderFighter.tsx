@@ -47,16 +47,18 @@ interface Particle {
 
 // --- 配置常量 ---
 const WEAPON_CONFIG = {
-    NORMAL: { damage: 10, speed: 12, width: 6, height: 16, color: '#facc15', interval: 15 },
-    SPREAD: { damage: 10, speed: 12, width: 6, height: 16, color: '#facc15', interval: 15 },
-    LASER:  { damage: 5,  speed: 25, width: 6, height: 50, color: '#06b6d4', interval: 6 },  // 激光单发伤害略降，靠频率和多重
-    FLAME:  { damage: 45, speed: 8,  width: 24, height: 24, color: '#f97316', interval: 22 }, 
+    NORMAL: { damage: 10, speed: 10, width: 6, height: 16, color: '#facc15', interval: 15 }, // 降低速度：12 -> 10
+    SPREAD: { damage: 10, speed: 10, width: 6, height: 16, color: '#facc15', interval: 15 }, // 降低速度：12 -> 10
+    LASER:  { damage: 5,  speed: 20, width: 6, height: 50, color: '#06b6d4', interval: 6 },  // 降低速度：25 -> 20
+    FLAME:  { damage: 45, speed: 7,  width: 24, height: 24, color: '#f97316', interval: 22 }, // 降低速度：8 -> 7
 };
 
 export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, isPlaying, onScore, onGameOver }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>(0);
     const frameCountRef = useRef(0);
+    const lastTimeRef = useRef<number>(0);
+    const lastMoveTimeRef = useRef<number>(0); // 用于节流玩家移动
     const visualAcuity = localStorage.getItem('visualAcuity') || '0.2-0.4';
 
     // 游戏核心状态
@@ -111,16 +113,26 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isPlaying]); 
 
+    // 节流玩家移动，避免在手机上移动过快
     const handlePointerMove = (e: React.PointerEvent) => {
         if (!isPlaying) return;
+        const now = performance.now();
+        // 限制移动更新频率，每帧最多更新一次（约16ms）
+        if (now - lastMoveTimeRef.current < 16) return;
+        lastMoveTimeRef.current = now;
+        
         const rect = canvasRef.current?.getBoundingClientRect();
         if (rect) {
             let targetX = e.clientX - rect.left;
             let targetY = e.clientY - rect.top;
             targetX = Math.max(0, Math.min(width, targetX));
             targetY = Math.max(0, Math.min(height, targetY));
-            gameState.current.player.x = targetX;
-            gameState.current.player.y = targetY - 40;
+            
+            // 平滑移动：使用插值而不是直接设置，避免移动过快
+            const p = gameState.current.player;
+            const moveSpeed = 0.15; // 进一步降低移动插值系数：从 0.3 降到 0.15，移动更慢更平滑
+            p.x = p.x + (targetX - p.x) * moveSpeed;
+            p.y = p.y + (targetY - 40 - p.y) * moveSpeed;
         }
     };
 
@@ -129,6 +141,25 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
+
+        const now = performance.now();
+        const lastTime = lastTimeRef.current;
+        // 计算 delta time，如果是第一次调用或时间差过大（可能是暂停后恢复）则使用目标帧时间
+        let deltaTime: number;
+        if (!lastTime || lastTime <= 0) {
+            deltaTime = 16.67; // 第一次调用，使用60fps的目标帧时间
+        } else {
+            const rawDelta = now - lastTime;
+            // 如果时间差过大（超过100ms，可能是暂停后恢复或标签页切换），使用目标帧时间
+            deltaTime = rawDelta > 100 ? 16.67 : Math.min(rawDelta, 33.33);
+        }
+        lastTimeRef.current = now;
+        // 限制 timeScale 在合理范围内，避免速度过快或过慢
+        // 在手机上，如果帧率很高，timeScale 会很小，导致速度变慢；如果帧率很低，timeScale 会很大，导致速度变快
+        // 为了保持一致的体验，我们使用更保守的限制，并确保子弹速度不会过快
+        const rawTimeScale = deltaTime / 16.67;
+        // 更激进的限制：0.15x 到 1.0x 之间，避免速度过快（最大不超过正常速度）
+        const timeScale = Math.min(Math.max(rawTimeScale, 0.15), 1.0);
 
         frameCountRef.current++;
         const state = gameState.current;
@@ -241,7 +272,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
                 const bossHp = 800 + (state.difficultyLevel * 400); 
                 state.boss = {
                     id: Date.now(), x: width/2, y: -100, width: 140, height: 100,
-                    vx: 2, vy: 2, hp: bossHp, maxHp: bossHp,
+                    vx: 1.5, vy: 1.5, hp: bossHp, maxHp: bossHp, // 降低 Boss 初始速度：从 2 降到 1.5
                     type: 'enemy', enemyType: 'BOSS',
                     shootTimer: 0, hitFlash: 0
                 };
@@ -260,9 +291,9 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
                 let size = 35;
                 // 基础HP大幅降低：10起步
                 let hp = 10 + (state.difficultyLevel * 10); 
-                // 速度降低：0.8起步
-                let spdY = 0.8 + Math.random() * 1.0 + (state.difficultyLevel * 0.2);
-                let spdX = (Math.random() - 0.5) * 1.5;
+                // 速度进一步降低：0.5起步（从 0.8 降到 0.5）
+                let spdY = 0.5 + Math.random() * 0.8 + (state.difficultyLevel * 0.15);
+                let spdX = (Math.random() - 0.5) * 1.2; // 降低横向速度
                 let color = '#ef4444';
                 let score = 100;
 
@@ -278,7 +309,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
                 } else if (rand > 0.85) {
                     eType = 'SPEED'; size = 25; 
                     hp = 5 + (state.difficultyLevel * 5); 
-                    spdY = 3.0 + (state.difficultyLevel * 0.5); 
+                    spdY = 2.0 + (state.difficultyLevel * 0.4); // 降低速度：从 3.0 降到 2.0 
                     color = '#eab308';
                     score = 150;
                 }
@@ -294,9 +325,9 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
             }
         } else if (state.phase === 'BOSS_FIGHT' && state.boss) {
             const boss = state.boss;
-            if (boss.y < 120) boss.y += 2;
+            if (boss.y < 120) boss.y += 1.5 * timeScale; // 降低 Boss 移动速度：从 2 降到 1.5
             else {
-                boss.x += boss.vx;
+                boss.x += boss.vx * timeScale;
                 if (boss.x < boss.width/2 + 10 || boss.x > width - boss.width/2 - 10) boss.vx *= -1;
             }
 
@@ -336,7 +367,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         // --- 玩家子弹 ---
         for (let i = state.bullets.length - 1; i >= 0; i--) {
             const b = state.bullets[i];
-            b.x += b.vx; b.y += b.vy;
+            b.x += b.vx * timeScale; b.y += b.vy * timeScale;
             
             ctx.fillStyle = b.color || '#facc15';
             ctx.fillRect(b.x - b.width/2, b.y, b.width, b.height);
@@ -408,7 +439,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         // --- 敌方子弹 ---
         for (let i = state.enemyBullets.length - 1; i >= 0; i--) {
             const b = state.enemyBullets[i];
-            b.x += b.vx; b.y += b.vy;
+            b.x += b.vx * timeScale; b.y += b.vy * timeScale;
             
             ctx.shadowBlur = 5; ctx.shadowColor = '#d946ef';
             ctx.fillStyle = b.color || '#e879f9';
@@ -430,7 +461,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         // --- 敌人渲染与更新 ---
         for (let i = state.enemies.length - 1; i >= 0; i--) {
             const e = state.enemies[i];
-            e.x += e.vx; e.y += e.vy;
+            e.x += e.vx * timeScale; e.y += e.vy * timeScale;
             if (e.hitFlash && e.hitFlash > 0) e.hitFlash--;
 
             // 射击
@@ -477,11 +508,11 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
             const buff = state.buffs[i];
             // 如果是掉落的buff，给它一点重力感或漂浮感
             if (buff.isDropped) {
-                buff.y += buff.vy;
-                buff.vx *= 0.95; // 阻力
-                if (buff.y > height - 100) buff.vy *= 0.8; // 底部减速
+                buff.y += buff.vy * timeScale;
+                buff.vx *= Math.pow(0.95, timeScale); // 阻力（基于时间）
+                if (buff.y > height - 100) buff.vy *= Math.pow(0.8, timeScale); // 底部减速
             } else {
-                buff.y += buff.vy;
+                buff.y += buff.vy * timeScale;
             }
 
             drawBuff(ctx, buff);
@@ -501,7 +532,7 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         // 粒子
         for (let i = state.particles.length - 1; i >= 0; i--) {
             const pt = state.particles[i];
-            pt.x += pt.vx; pt.y += pt.vy; pt.life--;
+            pt.x += pt.vx * timeScale; pt.y += pt.vy * timeScale; pt.life -= timeScale;
             ctx.globalAlpha = Math.max(0, pt.life / 30);
             if (pt.text) {
                 ctx.font = 'bold 24px sans-serif'; ctx.fillStyle = pt.color; ctx.textAlign = 'center';
@@ -842,16 +873,44 @@ export const ThunderFighter: React.FC<GameComponentProps> = ({ width, height, is
         }
     };
 
+    // 设置Canvas高DPI支持
     useEffect(() => {
-        if (isPlaying) requestRef.current = requestAnimationFrame(animate);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
+
+    useEffect(() => {
+        if (isPlaying) {
+            // 重置时间引用，避免暂停后恢复时时间差过大导致速度异常
+            lastTimeRef.current = 0;
+            requestRef.current = requestAnimationFrame(animate);
+        } else {
+            // 暂停时重置时间引用
+            lastTimeRef.current = 0;
+        }
         return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
     }, [isPlaying, animate]);
 
     return (
         <canvas 
             ref={canvasRef} 
-            width={width} 
-            height={height} 
             onPointerMove={handlePointerMove}
             onPointerDown={handlePointerMove}
             className="block touch-none cursor-crosshair" 

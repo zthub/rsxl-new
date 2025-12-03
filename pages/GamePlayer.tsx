@@ -23,6 +23,14 @@ export const GamePlayer: React.FC = () => {
   // Check if this is a video player module (Grating Player)
   const isVideoPlayer = moduleId === 'grating-player';
   
+  // Check if this is a mobile device
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                   (window.innerWidth <= 768);
+  
+  // Games that should not use fullscreen on mobile (g2-6: 俄罗斯方块新, g2-7: 动物消消乐)
+  const gamesWithoutFullscreenOnMobile = ['g2-5', 'g2-6', 'g2-7'];
+  const shouldUseFullscreen = !(isMobile && gamesWithoutFullscreenOnMobile.includes(gameId || ''));
+  
   // Determine Game Duration
   // 默认没有时间限制 (0)，表示无限模式
   // g2-4 (六角消消乐) 现在改为内部计时，此处设为0
@@ -81,28 +89,48 @@ export const GamePlayer: React.FC = () => {
     }
   };
 
-  // Handle Resize
+  // Handle Resize - 添加 orientationchange 事件以支持手机横屏
   useEffect(() => {
     const handleResize = () => {
         if (containerRef.current) {
-            setDimensions({
-                width: containerRef.current.clientWidth,
-                height: containerRef.current.clientHeight
-            });
+            // 延迟一下，确保在横屏切换后能获取到正确的尺寸
+            setTimeout(() => {
+                if (containerRef.current) {
+                    setDimensions({
+                        width: containerRef.current.clientWidth,
+                        height: containerRef.current.clientHeight
+                    });
+                }
+            }, 100);
         }
     };
+    const handleOrientationChange = () => {
+        // 横屏切换时，延迟更久一点以确保获取正确尺寸
+        setTimeout(() => {
+            if (containerRef.current) {
+                setDimensions({
+                    width: containerRef.current.clientWidth,
+                    height: containerRef.current.clientHeight
+                });
+            }
+        }, 300);
+    };
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
     handleResize(); 
     setTimeout(handleResize, 100);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('orientationchange', handleOrientationChange);
+    };
   }, []);
 
   // 对于视频播放器，在组件挂载时自动进入全屏
   useEffect(() => {
-    if (isVideoPlayer && isPlaying) {
+    if (isVideoPlayer && isPlaying && shouldUseFullscreen) {
       enterFullscreen();
     }
-  }, [isVideoPlayer, isPlaying]);
+  }, [isVideoPlayer, isPlaying, shouldUseFullscreen]);
 
   // 组件卸载时退出全屏
   useEffect(() => {
@@ -142,8 +170,10 @@ export const GamePlayer: React.FC = () => {
     setIsPlaying(true);
     setAmmo(20);
     setRestartKey(k => k + 1); // 强制刷新游戏组件
-    // 进入全屏模式
-    enterFullscreen();
+    // 进入全屏模式（手机端的特定游戏除外）
+    if (shouldUseFullscreen) {
+      enterFullscreen();
+    }
   };
 
   const stopGame = () => setIsPlaying(false);
@@ -183,7 +213,7 @@ export const GamePlayer: React.FC = () => {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-slate-900" ref={containerRef}>
       {/* Control Bar - Added pointer-events-none to container, auto to children to prevent blocking game clicks */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 bg-white/80 backdrop-blur-md shadow-sm transition-opacity duration-300 pointer-events-none">
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4 transition-opacity duration-300 pointer-events-none">
         <div className="flex items-center gap-4 pointer-events-auto">
             <button onClick={goBack} className="p-2 hover:bg-white/50 rounded-full text-slate-600 transition-colors">
                 <ArrowLeft className="w-6 h-6" />

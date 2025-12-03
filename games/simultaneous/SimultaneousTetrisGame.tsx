@@ -1,5 +1,4 @@
-
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { GameComponentProps } from '../../types';
 import { playSound } from '../../utils/gameUtils';
 import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
@@ -7,7 +6,7 @@ import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown } from 'lucide-react';
 const COLS = 10;
 const ROWS = 20;
 const BLOCK_SIZE = 30;
-const COLORS = ['#000000', '#EF4444', '#F59E0B', '#FCD34D', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'];
+const COLORS = ['#000000', '#EF4444', '#3B82F6'];
 
 // Shapes: I, J, L, O, S, T, Z
 const SHAPES = [
@@ -21,22 +20,35 @@ const SHAPES = [
     [[1,1,0],[0,1,1]] // Z
 ];
 
-export const TetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlaying, onScore, onGameOver }) => {
+export const SimultaneousTetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlaying, onScore, onGameOver }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>(0);
     
     // Game Logic Refs
     const gridRef = useRef<number[][]>([]);
-    const pieceRef = useRef({ shape: [] as number[][], x: 0, y: 0, colorIdx: 0 });
-    const nextPieceRef = useRef({ shape: [] as number[][], colorIdx: 0 });
+    const pieceRef = useRef({ shape: [] as number[][], x: 0, y: 0, colorIdx: 1 });
+    const nextPieceRef = useRef({ shape: [] as number[][], colorIdx: 1 });
     const dropCounterRef = useRef(0);
     const dropIntervalRef = useRef(50); // Frames
     const initializedRef = useRef(false); // Track if game has been initialized
+    const colorToggleRef = useRef(0);
+
+    const getNextColorIdx = useCallback(() => {
+        const idx = colorToggleRef.current % 2 === 0 ? 1 : 2;
+        colorToggleRef.current += 1;
+        return idx;
+    }, []);
+
+    const prepareNextPiece = useCallback(() => {
+        const nextTypeIdx = Math.floor(Math.random() * 7) + 1;
+        nextPieceRef.current = {
+            shape: SHAPES[nextTypeIdx],
+            colorIdx: getNextColorIdx()
+        };
+    }, [getNextColorIdx]);
     
     // 横屏判断
     const isLandscape = width > height;
-    
-    // UI State for score? Parent handles it.
     
     // Init Grid
     const initGrid = () => {
@@ -50,22 +62,19 @@ export const TetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlay
     // New Piece
     const spawnPiece = () => {
         // Use next piece if available, otherwise generate new one
-        const typeIdx = nextPieceRef.current.colorIdx || Math.floor(Math.random() * 7) + 1;
-        const shape = nextPieceRef.current.shape.length > 0 ? nextPieceRef.current.shape : SHAPES[typeIdx];
+        const hasNext = nextPieceRef.current.shape.length > 0;
+        const shape = hasNext ? nextPieceRef.current.shape : SHAPES[Math.floor(Math.random() * 7) + 1];
+        const colorIdx = hasNext ? nextPieceRef.current.colorIdx : getNextColorIdx();
         
         pieceRef.current = {
             shape,
             x: Math.floor(COLS / 2) - Math.floor(shape[0].length / 2),
             y: 0,
-            colorIdx: typeIdx
+            colorIdx
         };
         
         // Generate next piece
-        const nextTypeIdx = Math.floor(Math.random() * 7) + 1;
-        nextPieceRef.current = {
-            shape: SHAPES[nextTypeIdx],
-            colorIdx: nextTypeIdx
-        };
+        prepareNextPiece();
         
         // Check collision on spawn
         if (collide(gridRef.current, pieceRef.current)) {
@@ -167,16 +176,12 @@ export const TetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlay
     useEffect(() => {
         if (isPlaying && !initializedRef.current) {
             initGrid();
-            // Initialize next piece first
-            const nextTypeIdx = Math.floor(Math.random() * 7) + 1;
-            nextPieceRef.current = {
-                shape: SHAPES[nextTypeIdx],
-                colorIdx: nextTypeIdx
-            };
+            colorToggleRef.current = 0;
+            prepareNextPiece();
             spawnPiece();
             initializedRef.current = true;
         }
-    }, [isPlaying]);
+    }, [isPlaying, prepareNextPiece]);
 
     // Input - 键盘控制（桌面端）
     useEffect(() => {
@@ -386,3 +391,4 @@ export const TetrisGame: React.FC<GameComponentProps> = ({ width, height, isPlay
         </div>
     );
 };
+

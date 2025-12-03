@@ -342,20 +342,24 @@ export const AnimalPuzzleGame: React.FC<GameComponentProps> = ({ width, height, 
         setCompleted(false);
     }, [currentLevelIdx, width, height, mainWidth, sidebarWidth]);
 
-    // Init - only on first start, not on resume
+    // Init - 首次启动或关卡切换时初始化
     useEffect(() => {
-        if (isPlaying && !initializedRef.current) {
+        if (isPlaying) {
+            if (!initializedRef.current) {
+                initializedRef.current = true;
+            }
             initLevel();
-            initializedRef.current = true;
         }
-    }, [isPlaying, initLevel]);
+    }, [isPlaying, currentLevelIdx, initLevel]);
 
     const handleLevelComplete = () => {
         setCompleted(true);
         playSound('correct');
         onScore(100);
         setTimeout(() => {
+            setCompleted(false); // 重置 completed 状态，关闭遮罩
             setCurrentLevelIdx(prev => (prev + 1) % LEVELS.length);
+            // initLevel 会在 useEffect 中自动调用（因为 currentLevelIdx 变化）
         }, 1500);
     };
 
@@ -529,6 +533,29 @@ export const AnimalPuzzleGame: React.FC<GameComponentProps> = ({ width, height, 
         requestRef.current = requestAnimationFrame(animate);
     }, [width, height, visualAcuity, currentLevelIdx, completed, mainWidth, sidebarWidth, animalX, animalY, animalScale]);
 
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
+
     useEffect(() => {
         if (isPlaying) requestRef.current = requestAnimationFrame(animate);
         return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
@@ -537,8 +564,6 @@ export const AnimalPuzzleGame: React.FC<GameComponentProps> = ({ width, height, 
     return (
         <canvas 
             ref={canvasRef} 
-            width={width} 
-            height={height} 
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

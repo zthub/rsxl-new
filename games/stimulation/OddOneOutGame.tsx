@@ -39,6 +39,29 @@ export const OddOneOutGame: React.FC<GameComponentProps> = ({ width, height, isP
         requestRef.current = requestAnimationFrame(animate);
     }, [width, height, visualAcuity]);
 
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
+
     useEffect(() => {
         // 只要开始游戏，就启动动画循环
         if (isPlaying) {
@@ -127,8 +150,6 @@ export const OddOneOutGame: React.FC<GameComponentProps> = ({ width, height, isP
             {/* 1. 背景层 Canvas - 始终渲染以保证动画循环正常运行 */}
             <canvas 
                 ref={canvasRef} 
-                width={width} 
-                height={height} 
                 className="absolute inset-0 pointer-events-none z-0"
             />
 

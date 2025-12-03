@@ -16,9 +16,18 @@ import { TraceContourGame } from './fine-motor/TraceContourGame';
 import { MazeGame } from './fine-motor/MazeGame';
 import { HexagonGame } from './fine-motor/HexagonGame';
 import { TetrisGame } from './fine-motor/TetrisGame';
-import { SimultaneousGame } from './simultaneous/SimultaneousGame';
+import { NewTetrisGame as FineMotorNewTetrisGame } from './fine-motor/NewTetrisGame';
+import { AnimalPopGame } from './fine-motor/AnimalPopGame';
+import { FindRedBeanGame } from './fine-motor/FindRedBeanGame';
+import { DefuseBombGridGame } from './fine-motor/DefuseBombGridGame';
+import { ProtectChicksGame } from './fine-motor/ProtectChicksGame';
+import { SimultaneousTetrisGame } from './simultaneous/SimultaneousTetrisGame';
+import { SnakeGame } from './simultaneous/SnakeGame';
+import { ColorMatchGame } from './simultaneous/ColorMatchGame';
 import { FusionGame } from './fusion/FusionGame';
+import { FusionPointGame } from './fusion/FusionPointGame';
 import { StereoscopicGame } from './stereoscopic/StereoscopicGame';
+import { DepthCatchGame } from './stereoscopic/DepthCatchGame';
 import { OnlineVideoPlayer } from './grating/OnlineVideoPlayer';
 import { LocalVideoPlayer } from './grating/LocalVideoPlayer';
 
@@ -42,20 +51,24 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g2-3': MazeGame,         // 迷宫探险
     'g2-4': HexagonGame,
     'g2-5': TetrisGame,
+    'g2-6': FineMotorNewTetrisGame,    // 俄罗斯方块新
+    'g2-7': AnimalPopGame,    // 动物消消乐
+    'g2-8': DefuseBombGridGame, // 拆炸弹（视觉精细版）
+    'g2-9': ProtectChicksGame,  // 保护小鸡（视觉精细版）
+    'g2-10': FindRedBeanGame,   // 找红豆（视觉精细版）
 
     // Simultaneous
-    'g3-1': SimultaneousGame,
-    'g3-2': SimultaneousGame,
-    'g3-3': SimultaneousGame,
+    'g3-1': SimultaneousTetrisGame,
+    'g3-2': SnakeGame,
+    'g3-3': ColorMatchGame, // 红蓝配对消除
 
     // Fusion
     'g4-1': FusionGame,
-    'g4-2': FusionGame,
+    'g4-2': FusionPointGame, // 融合点点击
 
     // Stereoscopic
     'g5-1': StereoscopicGame,
-    'g5-2': StereoscopicGame,
-    'g5-3': StereoscopicGame,
+    'g5-2': DepthCatchGame, // 深度接球
 
     // Grating Player
     'g6-1': OnlineVideoPlayer,

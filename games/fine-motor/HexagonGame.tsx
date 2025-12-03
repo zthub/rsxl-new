@@ -132,18 +132,22 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
     };
 
     const refillShapes = useCallback(() => {
+        // 重新计算布局参数，确保使用最新的尺寸
+        const currentIsPortrait = height > width;
+        const currentSidebarSize = currentIsPortrait ? height * 0.28 : Math.max(240, width * 0.25);
+        
         const slots = [];
-        if (isPortrait) {
+        if (currentIsPortrait) {
             // Distribute shapes horizontally, avoiding right edge
             const spacingX = width / 4; // Use 4 divisions for better spacing
-            const barY = height - sidebarSize * 0.6; 
+            const barY = height - currentSidebarSize * 0.6; 
             slots.push({ x: spacingX * 1, y: barY });      // Left
             slots.push({ x: spacingX * 2, y: barY });      // Center
             slots.push({ x: spacingX * 3, y: barY });      // Right (but not at edge)
         } else {
             // Distribute shapes evenly in the right sidebar area, slightly left of center
-            const sidebarLeft = width - sidebarSize;
-            const centerX = sidebarLeft + sidebarSize * 0.45; // Slightly left of center for better visual balance
+            const sidebarLeft = width - currentSidebarSize;
+            const centerX = sidebarLeft + currentSidebarSize * 0.45; // Slightly left of center for better visual balance
             // Distribute vertically with more spacing: top, middle, bottom
             const topY = height * 0.25;    // Top quarter
             const midY = height * 0.5;      // Middle
@@ -164,14 +168,17 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
                 existing.currentY = slots[i].y;
             }
         }
-    }, [isPortrait, width, height, sidebarSize]);
+    }, [width, height]);
 
     // Init Game - only on first start, not on resume
     useEffect(() => {
         if (isPlaying && !initializedRef.current) {
             initBoard();
             shapesRef.current = [];
-            refillShapes();
+            // 延迟一下确保尺寸已经正确设置
+            setTimeout(() => {
+                refillShapes();
+            }, 100);
             gameOverRef.current = false;
             setLevel(1);
             setLevelScore(0);
@@ -179,7 +186,14 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
             setTimeLeft(180); // Reset timer
             initializedRef.current = true;
         }
-    }, [isPlaying, initBoard, refillShapes]); 
+    }, [isPlaying, initBoard, refillShapes]);
+    
+    // 当尺寸变化时，更新碎片位置
+    useEffect(() => {
+        if (isPlaying && initializedRef.current && shapesRef.current.length > 0) {
+            refillShapes();
+        }
+    }, [width, height, isPlaying, refillShapes]); 
 
     // Timer Logic
     useEffect(() => {
@@ -255,14 +269,23 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         }
 
         setLevelScore(prev => {
-            const nextScore = prev + gainedPoints;
-            const target = level * 90;
+            // 如果已经显示升级提示，不再增加分数
+            if (showLevelUp) {
+                return prev;
+            }
             
+            const nextScore = prev + gainedPoints;
+            // 第一关90分，后面每关增加30分：第1关90，第2关120，第3关150...
+            const target = 90 + (level - 1) * 30;
+            
+            // 确保只升级一关，防止跳级
             if (nextScore >= target) {
                 setShowLevelUp(true);
                 playSound('correct');
+                // 使用函数式更新确保只增加1，使用当前level值
+                const currentLevel = level;
                 setTimeout(() => {
-                    setLevel(l => l + 1);
+                    setLevel(currentLevel + 1);
                     setLevelScore(0); 
                     setShowLevelUp(false);
                     setTimeLeft(180); // Reset timer for next level
@@ -270,8 +293,10 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
                     shapesRef.current = [];
                     refillShapes();
                 }, 2000);
-                return nextScore; 
+                // 返回目标分数，防止超出导致跳级
+                return target;
             }
+            
             return nextScore;
         });
     };
@@ -485,7 +510,8 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         ctx.textAlign = 'right';
         ctx.fillText(timeStr, uiX + 165, uiY + 25);
 
-        const target = level * 90;
+        // 使用与计算逻辑一致的目标分数：第一关90分，后面每关增加30分
+        const target = 90 + (level - 1) * 30;
         const progress = Math.min(1, levelScore / target);
         
         ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
@@ -511,6 +537,29 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         requestRef.current = requestAnimationFrame(animate);
     }, [width, height, isPortrait, sidebarSize, HEX_SIZE, level, levelScore, showLevelUp, timeLeft]);
 
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
+
     useEffect(() => {
         if (isPlaying) requestRef.current = requestAnimationFrame(animate);
         return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
@@ -519,8 +568,6 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
     return (
         <canvas 
             ref={canvasRef} 
-            width={width} 
-            height={height} 
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

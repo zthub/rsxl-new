@@ -40,10 +40,15 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>(0);
     const frameCountRef = useRef(0);
+    const lastTimeRef = useRef<number>(0);
     const visualAcuity = localStorage.getItem('visualAcuity') || '0.2-0.4';
 
     // 标记初始化状态，防止暂停恢复时重置
     const initializedRef = useRef(false);
+    // 记录上一次使用的画布尺寸，用于在尺寸变化（尤其是手机横竖屏切换）时重新布局物品
+    const lastSizeRef = useRef<{ width: number; height: number }>({ width, height });
+    // 标记是否已经触发自动结算，避免重复触发
+    const autoSettledRef = useRef(false);
 
     // 游戏逻辑状态 (Ref，不触发重渲染)
     const gameRef = useRef({
@@ -81,7 +86,11 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
     // 初始化关卡物品
     const initLevelItems = useCallback((levelNum: number) => {
         const items: MineItem[] = [];
-        const { originY } = gameRef.current;
+        // 动态计算 originY，适配横屏和竖屏
+        const isLandscape = width > height;
+        const originY = isLandscape ? Math.max(100, height * 0.15) : 150;
+        gameRef.current.originY = originY;
+        gameRef.current.originX = width / 2;
         const w = width;
         const h = height;
 
@@ -104,11 +113,20 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
                 case 'RAT':        r=24; itemW=3.0; val=-300; lbl='🐀'; break; 
             }
 
-            // 随机位置 (避开顶部)
+            // 随机位置 (避开顶部和底部，适配横屏)
             let x = 0, y = 0, valid = false, attempts = 0;
+            const minY = originY + 80;
+            const maxY = h - 100; // 底部留出空间
+            const availableHeight = Math.max(100, maxY - minY); // 确保有足够空间
+            
             while(!valid && attempts < 50) {
                 x = Math.random() * (w - 100) + 50;
-                y = originY + 80 + Math.random() * (h - originY - 130);
+                y = minY + Math.random() * availableHeight;
+                // 确保不超出边界
+                if (y < minY || y > maxY) {
+                    attempts++;
+                    continue;
+                }
                 const overlap = items.some(it => Math.hypot(it.x - x, it.y - y) < it.radius + r + 20);
                 if (!overlap) valid = true;
                 attempts++;
@@ -141,9 +159,18 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
         
     }, [width, height]);
 
-    // 开始游戏 (仅首次运行)
+    // 当尺寸变化时，更新 originX/originY，确保位置正确
     useEffect(() => {
-        if (isPlaying && !initializedRef.current) {
+        if (width > 0 && height > 0) {
+            const isLandscape = width > height;
+            gameRef.current.originY = isLandscape ? Math.max(100, height * 0.15) : 150;
+            gameRef.current.originX = width / 2;
+        }
+    }, [width, height]);
+
+    // 开始游戏 (仅首次运行) - 确保 width/height 有效时才初始化
+    useEffect(() => {
+        if (isPlaying && !initializedRef.current && width > 0 && height > 0) {
             initializedRef.current = true;
             setMoney(0);
             setLevel(1);
@@ -151,9 +178,48 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
             setInventory({ dynamite: 1, strength: 0, clock: 0 });
             gameRef.current.buffStrengthActive = false;
             setActiveBuffs({ strength: false });
-            startLevel(1, 150, 0);
+            // 延迟初始化，确保尺寸已正确设置（多次延迟确保布局完全稳定）
+            // 第一次延迟：等待基本布局
+            setTimeout(() => {
+                // 第二次延迟：确保尺寸完全稳定
+                setTimeout(() => {
+                    // 重新获取最新的 width/height，确保使用正确的尺寸
+                    const currentWidth = width;
+                    const currentHeight = height;
+                    if (currentWidth > 0 && currentHeight > 0) {
+                        // 确保 originX/originY 在初始化前已正确设置
+                        const isLandscape = currentWidth > currentHeight;
+                        gameRef.current.originY = isLandscape ? Math.max(100, currentHeight * 0.15) : 150;
+                        gameRef.current.originX = currentWidth / 2;
+                        startLevel(1, 150, 0);
+                    }
+                }, 300); // 第二次延迟 300ms
+            }, 200); // 第一次延迟 200ms，总共 500ms
         }
-    }, [isPlaying]); // initLevelItems 不作为依赖，避免resize重置
+    }, [isPlaying, width, height]); // 添加 width/height 依赖，确保尺寸正确
+    
+    // 当画布尺寸在游戏过程中发生变化（例如手机横竖屏切换或进入/退出全屏）时，
+    // 重新根据当前关卡和最新尺寸布局地下物品，避免都堆在左下角或被遮挡
+    useEffect(() => {
+        if (!initializedRef.current || width <= 0 || height <= 0) {
+            lastSizeRef.current = { width, height };
+            return;
+        }
+
+        const prev = lastSizeRef.current;
+        const sizeChanged = prev.width !== width || prev.height !== height;
+
+        if (sizeChanged) {
+            lastSizeRef.current = { width, height };
+            // 只在进行中的关卡里重新布局，保留当前金钱、时间等状态不变
+            if (phase === 'PLAYING') {
+                initLevelItems(level);
+            }
+            return;
+        }
+
+        lastSizeRef.current = { width, height };
+    }, [width, height, phase, level, initLevelItems]);
     
     // 关键修复：监听外部 isPlaying 变化
     // 如果外部从暂停恢复为 isPlaying=true，且当前并没有结束，则确保 phase 状态正确
@@ -173,7 +239,11 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
     const startLevel = (lvl: number, target: number, timeBonus: number) => {
         setPhase('PLAYING');
         setTimeLeft(60 + timeBonus);
-        initLevelItems(lvl);
+        autoSettledRef.current = false; // 重置自动结算标记
+        // 确保 width/height 有效时才初始化
+        if (width > 0 && height > 0) {
+            initLevelItems(lvl);
+        }
     };
 
     // 倒计时
@@ -245,7 +315,7 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
     };
 
     // 动画循环
-    const animate = useCallback(() => {
+    const animate = useCallback((currentTime: number = performance.now()) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -253,13 +323,40 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
 
         frameCountRef.current++;
         const state = gameRef.current;
-        const { originX, originY } = state;
+        // 确保使用最新的 originX/originY，如果未初始化则使用当前尺寸计算
+        let originX = state.originX;
+        let originY = state.originY;
+        if (!originX || originX <= 0 || !originY || originY <= 0) {
+            // 如果未初始化，使用当前尺寸计算
+            const isLandscape = width > height;
+            originY = isLandscape ? Math.max(100, height * 0.15) : 150;
+            originX = width / 2;
+            state.originX = originX;
+            state.originY = originY;
+        }
 
-        // 0. 更新动态物品 (老鼠)
+        // 计算时间缩放 (基于 delta time，以 60fps 为基准)
+        const targetFPS = 60;
+        const targetFrameTime = 1000 / targetFPS; // ~16.67ms
+        const lastTime = lastTimeRef.current;
+        // 计算 delta time，如果是第一次调用或时间差过大（可能是暂停后恢复）则使用目标帧时间
+        let deltaTime: number;
+        if (!lastTime || lastTime <= 0) {
+            deltaTime = targetFrameTime; // 第一次调用
+        } else {
+            const rawDelta = currentTime - lastTime;
+            // 如果时间差过大（超过100ms，可能是暂停后恢复或标签页切换），使用目标帧时间
+            deltaTime = rawDelta > 100 ? targetFrameTime : Math.min(rawDelta, 33.33);
+        }
+        lastTimeRef.current = currentTime;
+        // 限制 timeScale 在合理范围内，避免速度过快或过慢
+        const timeScale = Math.min(Math.max(deltaTime / targetFrameTime, 0.5), 2.0); // 限制在 0.5x 到 2.0x 之间
+
+        // 0. 更新动态物品 (老鼠) - 使用时间缩放
         state.items.forEach(item => {
             if (item.type === 'RAT' && item.vx) {
                 if (item.ratState === 'MOVING') {
-                    item.x += item.vx;
+                    item.x += item.vx * timeScale;
                     
                     const boundary = 100; 
                     if ((item.vx > 0 && item.x > width + boundary) || (item.vx < 0 && item.x < -boundary)) {
@@ -268,7 +365,7 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
                     }
                 } else if (item.ratState === 'WAITING') {
                     if (item.waitTimer && item.waitTimer > 0) {
-                        item.waitTimer--;
+                        item.waitTimer -= timeScale; // 使用时间缩放
                     } else {
                         item.ratState = 'MOVING';
                         item.vx *= -1; 
@@ -290,21 +387,42 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
         // 1. 渲染背景
         renderCommonBackground(ctx, width, height, frameCountRef.current, visualAcuity);
 
-        // 2. 矿工逻辑
-        const baseRetractSpeed = 5; 
+        // 2. 矿工逻辑 - 使用时间缩放
+        const baseRetractSpeed = 2.5; // 进一步调慢回绳速度：从 3.5 降到 2.5
         const shootSpeed = 9;
         const strengthMult = state.buffStrengthActive ? 1.6 : 1.0;
 
         if (state.minerState === 'IDLE') {
+            // 检查是否只剩下不能拉取的物品（TNT 和 RAT）
+            const pullableItems = state.items.filter(item => 
+                item.type !== 'TNT' && item.type !== 'RAT'
+            );
+            
+            // 如果只剩下 TNT 和 RAT，自动结算游戏（只触发一次）
+            if (pullableItems.length === 0 && state.items.length > 0 && phase === 'PLAYING' && !autoSettledRef.current) {
+                autoSettledRef.current = true; // 标记已触发，避免重复
+                // 延迟一下，让玩家看到当前状态
+                setTimeout(() => {
+                    if (money >= targetMoney) {
+                        setPhase('SHOP');
+                        playSound('correct');
+                    } else {
+                        setPhase('GAME_OVER');
+                        playSound('wrong');
+                        onGameOver();
+                    }
+                }, 500);
+            }
+            
             const maxAngle = Math.PI / 2.2;
-            state.angle += state.angleSpeed * state.angleDirection;
+            state.angle += state.angleSpeed * state.angleDirection * timeScale;
             if (state.angle > maxAngle || state.angle < -maxAngle) state.angleDirection *= -1;
             
             state.hookX = originX + Math.sin(state.angle) * 60;
             state.hookY = originY + Math.cos(state.angle) * 60;
         
         } else if (state.minerState === 'SHOOTING') {
-            state.hookLength += shootSpeed * strengthMult;
+            state.hookLength += shootSpeed * strengthMult * timeScale;
             state.hookX = originX + Math.sin(state.angle) * state.hookLength;
             state.hookY = originY + Math.cos(state.angle) * state.hookLength;
 
@@ -339,7 +457,7 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
             }
 
         } else if (state.minerState === 'RETRACTING_EMPTY') {
-            state.hookLength -= shootSpeed * 1.5;
+            state.hookLength -= shootSpeed * 1.5 * timeScale;
             if (state.hookLength <= 60) {
                 state.hookLength = 60;
                 state.minerState = 'IDLE';
@@ -351,10 +469,10 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
             let speed = baseRetractSpeed * strengthMult;
             if (state.caughtItem) {
                 const w = state.buffStrengthActive ? Math.max(1, state.caughtItem.weight * 0.4) : state.caughtItem.weight;
-                speed = (baseRetractSpeed * 2.5) / w; 
+                speed = (baseRetractSpeed * 1.5) / w; // 进一步调慢：从 2.0 降到 1.5 
             }
             
-            state.hookLength -= speed;
+            state.hookLength -= speed * timeScale;
             if (state.caughtItem) {
                 state.caughtItem.x = originX + Math.sin(state.angle) * state.hookLength;
                 state.caughtItem.y = originY + Math.cos(state.angle) * state.hookLength;
@@ -450,7 +568,7 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
 
         for (let i = state.particles.length - 1; i >= 0; i--) {
             const p = state.particles[i];
-            p.x += p.vx; p.y += p.vy; p.life--;
+            p.x += p.vx * timeScale; p.y += p.vy * timeScale; p.life -= timeScale;
             ctx.globalAlpha = p.life / 60;
             if (p.text) {
                 ctx.font = 'bold 24px sans-serif'; ctx.fillStyle = p.color;
@@ -466,10 +584,40 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
         ctx.restore(); 
         requestRef.current = requestAnimationFrame(animate);
 
-    }, [width, height, visualAcuity]);
+    }, [width, height, visualAcuity, phase, money, targetMoney, onGameOver]);
+
+    // 设置Canvas高DPI支持
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        
+        const dpr = window.devicePixelRatio || 1;
+        
+        // 设置实际分辨率（物理像素）
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        
+        // 设置CSS显示尺寸（逻辑像素）
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        
+        // 缩放上下文以匹配设备像素比
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.setTransform(1, 0, 0, 1, 0, 0); // 重置变换
+            ctx.scale(dpr, dpr);
+        }
+    }, [width, height]);
 
     useEffect(() => {
-        if (isPlaying) requestRef.current = requestAnimationFrame(animate);
+        if (isPlaying) {
+            // 重置时间引用，避免暂停后恢复时时间差过大导致速度异常
+            lastTimeRef.current = 0;
+            requestRef.current = requestAnimationFrame(animate);
+        } else {
+            // 暂停时重置时间引用
+            lastTimeRef.current = 0;
+        }
         return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
     }, [isPlaying, animate]);
 
@@ -478,8 +626,6 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
         <div className="relative w-full h-full select-none overflow-hidden font-sans">
             <canvas 
                 ref={canvasRef} 
-                width={width} 
-                height={height} 
                 onPointerDown={handleTrigger}
                 className="absolute inset-0 block touch-none cursor-pointer" 
             />

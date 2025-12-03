@@ -5,11 +5,40 @@
 // 游戏通用工具函数
 
 // --- 音效辅助函数 ---
-export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
+// 使用单例 AudioContext，避免在手机上频繁创建导致声音失效
+let audioContextInstance: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
     try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
+        if (!AudioContext) return null;
+        
+        // 如果已有实例且状态正常，直接返回
+        if (audioContextInstance && audioContextInstance.state !== 'closed') {
+            // 如果被暂停，尝试恢复
+            if (audioContextInstance.state === 'suspended') {
+                audioContextInstance.resume().catch(() => {
+                    // 如果恢复失败，创建新实例
+                    audioContextInstance = new AudioContext();
+                });
+            }
+            return audioContextInstance;
+        }
+        
+        // 创建新实例
+        audioContextInstance = new AudioContext();
+        return audioContextInstance;
+    } catch (e) {
+        console.warn('AudioContext creation failed:', e);
+        return null;
+    }
+};
+
+export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
+    try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         
@@ -29,11 +58,11 @@ export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
             osc.start(now);
             osc.stop(now + 0.3);
         } else if (type === 'wrong') {
-            // 错误提示音 (三角波，低沉，柔和)
+            // 错误提示音 (三角波，低沉，柔和) - 增大音量使其更明显
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(150, now);
             osc.frequency.linearRampToValueAtTime(100, now + 0.2);
-            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.setValueAtTime(0.25, now); // 从0.08增加到0.25，使声音更明显
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             osc.start(now);
             osc.stop(now + 0.2);
@@ -49,6 +78,7 @@ export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
         }
     } catch (e) {
         // 忽略音频上下文错误
+        console.warn('playSound error:', e);
     }
 };
 
