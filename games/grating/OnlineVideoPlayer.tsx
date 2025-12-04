@@ -76,27 +76,55 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const [editingNode, setEditingNode] = useState<{ id: string; type: 'folder' | 'video'; parentPath: string[] } | null>(null);
     const [newNodeData, setNewNodeData] = useState<{ name: string; url?: string }>({ name: '', url: '' });
     
+    // 视力类型：视觉刺激 / 立体视，从本地存储读取上次保存的值
+    const [visionType, setVisionType] = useState<'visual' | 'stereo'>(() => {
+        const saved = localStorage.getItem('gratingPlayerVisionType');
+        if (saved === 'visual' || saved === 'stereo') {
+            return saved;
+        }
+        return 'visual';
+    });
+
     // 视频窗口大小状态
     const [videoSize, setVideoSize] = useState({ width: 480, height: 270 });
     const [isResizing, setIsResizing] = useState(false);
     const resizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
     const videoContainerRef = useRef<HTMLDivElement>(null);
     
-    // 透明度状态
+    // 透明度状态（视觉刺激时：调视频整体透明度；立体视时：调红蓝遮罩透明度）
     const [opacity, setOpacity] = useState(1.0);
     const [showOpacityControl, setShowOpacityControl] = useState(false);
 
-    // 背景动画循环
+    // 当切换为立体视时，将遮罩默认透明度设置为 80%；切回视觉刺激则恢复为 100%
+    useEffect(() => {
+        if (visionType === 'stereo') {
+            setOpacity(0.8);
+        } else {
+            setOpacity(1.0);
+        }
+    }, [visionType]);
+
+    // 背景动画 / 静态背景循环
     const animate = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        frameCountRef.current++;
-        renderCommonBackground(ctx, width, height, frameCountRef.current, visualAcuity);
+        if (visionType === 'stereo') {
+            // 立体视：使用简单静态背景（深灰渐变），不再使用动态视觉刺激背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, height);
+            gradient.addColorStop(0, '#020617');
+            gradient.addColorStop(1, '#111827');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, width, height);
+        } else {
+            // 视觉刺激：保持原来的动态背景
+            frameCountRef.current++;
+            renderCommonBackground(ctx, width, height, frameCountRef.current, visualAcuity);
+        }
         requestRef.current = requestAnimationFrame(animate);
-    }, [width, height, visualAcuity]);
+    }, [width, height, visualAcuity, visionType]);
 
     useEffect(() => {
         if (isPlaying) {
@@ -745,7 +773,25 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                     className="flex justify-end mb-2 pointer-events-none gap-2"
                     style={{ width: '480px', maxWidth: '100%' }}
                 >
-                    <div className="pointer-events-auto relative flex gap-2">
+                    <div className="pointer-events-auto relative flex gap-2 items-center">
+                        {/* 视力类型选择 */}
+                        <div className="flex items-center gap-2 px-2 py-1.5 bg-white/90 rounded-lg shadow border border-slate-200 text-xs text-slate-700">
+                            <span className="font-semibold whitespace-nowrap">视力类型</span>
+                            <select
+                                value={visionType}
+                                onChange={(e) => {
+                                    const newValue = e.target.value as 'visual' | 'stereo';
+                                    setVisionType(newValue);
+                                    // 保存到本地存储
+                                    localStorage.setItem('gratingPlayerVisionType', newValue);
+                                }}
+                                className="border border-slate-300 rounded px-1.5 py-0.5 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                                <option value="visual">视觉刺激</option>
+                                <option value="stereo">立体视</option>
+                            </select>
+                        </div>
+
                         <button 
                             onClick={() => {
                                 setShowMenu(!showMenu);
@@ -867,7 +913,8 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                         maxHeight: '90%',
                         minWidth: '240px',
                         minHeight: '135px',
-                        opacity: opacity
+                        // 视觉刺激：调整体透明度；立体视：视频始终不透明
+                        opacity: visionType === 'visual' ? opacity : 1
                     }}
                 >
                     {isPlaying ? (
@@ -921,7 +968,9 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             {showOpacityControl && (
                                 <div className="absolute top-12 left-2 bg-white/95 backdrop-blur-md rounded-lg p-4 shadow-xl z-30 min-w-[200px]">
                                     <div className="flex items-center justify-between mb-3">
-                                        <span className="text-sm font-bold text-slate-800">透明度</span>
+                                        <span className="text-sm font-bold text-slate-800">
+                                            {visionType === 'visual' ? '透明度' : '遮罩透明度'}
+                                        </span>
                                         <button 
                                             onClick={resetOpacity}
                                             className="text-xs text-blue-600 hover:text-blue-800 font-bold"
@@ -940,7 +989,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                     />
                                     <div className="flex justify-between text-xs text-slate-600 mt-1">
                                         <span>0%</span>
-                                        <span className="font-bold text-purple-600">{Math.round(opacity * 100)}%</span>
+                                            <span className="font-bold text-purple-600">{Math.round(opacity * 100)}%</span>
                                         <span>100%</span>
                                     </div>
                                 </div>
@@ -958,6 +1007,25 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             >
                                 <div className="w-3 h-3 border-2 border-slate-600 rounded-sm"></div>
                             </div>
+                            {/* 立体视遮罩：左红右蓝，透明度由 slider 控制 */}
+                            {visionType === 'stereo' && (
+                                <div className="pointer-events-none absolute inset-0 flex z-10">
+                                    <div
+                                        className="w-1/2 h-full"
+                                        style={{
+                                            backgroundColor: `rgba(255, 0, 0, ${opacity})`,
+                                            mixBlendMode: 'multiply',
+                                        }}
+                                    />
+                                    <div
+                                        className="w-1/2 h-full"
+                                        style={{
+                                            backgroundColor: `rgba(0, 102, 255, ${opacity})`,
+                                            mixBlendMode: 'multiply',
+                                        }}
+                                    />
+                                </div>
+                            )}
                         </>
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-slate-400 bg-slate-900 font-bold">

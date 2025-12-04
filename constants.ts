@@ -10,7 +10,6 @@ export const TRAINING_MODULES: TrainingModule[] = [
     colorTo: 'to-rose-600',
     iconName: 'Zap',
     games: [
-      // g1-4 背景闪烁 已移除
       { id: 'g1-8', title: '火眼金睛', description: '找出那个不一样的图案！', difficulty: 'Easy' },
       { id: 'g1-5', title: '合成大西瓜', description: '在闪烁背景下合成更大的水果', difficulty: 'Hard' },
       { id: 'g1-6', title: '寻找水果', description: '在闪烁背景中找出底部指定的水果', difficulty: 'Hard' },
@@ -20,6 +19,8 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g1-11', title: '顽皮兔大作战', description: '敲击兔子得分，小心避开炸弹！', difficulty: 'Medium' },
       { id: 'g1-12', title: '动物拼图', description: '拖动碎片还原可爱的动物形象', difficulty: 'Easy' },
       { id: 'g1-13', title: '欢乐矿工', description: '看准时机，抓取星星和宝藏！', difficulty: 'Medium' },
+      // 强闪永远放在视觉刺激模块的最后
+      { id: 'g1-4', title: '强闪刺激', description: '整屏在红黄蓝黑白之间快速闪烁，可根据视力自动调频并手动微调速率', difficulty: 'Medium' },
     ]
   },
   {

@@ -30,11 +30,12 @@ import { StereoscopicGame } from './stereoscopic/StereoscopicGame';
 import { DepthCatchGame } from './stereoscopic/DepthCatchGame';
 import { OnlineVideoPlayer } from './grating/OnlineVideoPlayer';
 import { LocalVideoPlayer } from './grating/LocalVideoPlayer';
+import { StrongFlashGame } from './stimulation/StrongFlashGame';
 
 // Registry mapping game IDs to their implementation components
 export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     // Stimulation
-    // 'g1-4': VisualStimulation, // Removed
+    'g1-4': StrongFlashGame, // 视觉刺激 - 强闪
     'g1-8': OddOneOutGame,
     'g1-5': WatermelonGame,
     'g1-6': FindFruitGame,
