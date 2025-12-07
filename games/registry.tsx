@@ -24,6 +24,7 @@ import { ProtectChicksGame } from './fine-motor/ProtectChicksGame';
 import { SimultaneousTetrisGame } from './simultaneous/SimultaneousTetrisGame';
 import { SnakeGame } from './simultaneous/SnakeGame';
 import { ColorMatchGame } from './simultaneous/ColorMatchGame';
+import { CatchApplesGame } from './simultaneous/CatchApplesGame';
 import { FusionGame } from './fusion/FusionGame';
 import { FusionPointGame } from './fusion/FusionPointGame';
 import { StereoscopicGame } from './stereoscopic/StereoscopicGame';
@@ -62,6 +63,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g3-1': SimultaneousTetrisGame,
     'g3-2': SnakeGame,
     'g3-3': ColorMatchGame, // 红蓝配对消除
+    'g3-4': CatchApplesGame, // 接苹果
 
     // Fusion
     'g4-1': FusionGame,

@@ -54,6 +54,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g3-1', title: '红蓝俄罗斯方块', description: '红蓝交替方块，训练双眼同视协调', difficulty: 'Medium' },
       { id: 'g3-2', title: '红蓝贪吃蛇', description: '红色小蛇吃蓝色小点，紫色背景同时视训练', difficulty: 'Medium' },
       { id: 'g3-3', title: '红蓝配对消除', description: '同时看到红蓝图案进行配对消除，强化双眼同时感知', difficulty: 'Medium' },
+      { id: 'g3-4', title: '接苹果', description: '移动红篮子接住掉落的蓝苹果，锻炼双眼同时视', difficulty: 'Medium' },
     ]
   },
   {
