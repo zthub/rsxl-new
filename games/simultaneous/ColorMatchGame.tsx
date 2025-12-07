@@ -125,8 +125,8 @@ export const ColorMatchGame: React.FC<GameComponentProps> = ({
 
     frameCountRef.current++;
 
-    // 清空画布
-    ctx.fillStyle = '#1F2937';
+    // 清空画布 - 紫色背景
+    ctx.fillStyle = '#A855F7'; // 更亮的紫色
     ctx.fillRect(0, 0, width, height);
 
     // 绘制提示文字（红蓝分视说明）
@@ -137,11 +137,14 @@ export const ColorMatchGame: React.FC<GameComponentProps> = ({
     ctx.fillText(`得分: ${scoreRef.current} | 连击: ${combo}`, width / 2, 55);
 
     // 生成新物品
+    const isLandscape = width > height;
     if (frameCountRef.current % spawnIntervalRef.current === 0) {
       spawnItem();
-      // 逐渐加快生成速度
-      if (spawnIntervalRef.current > 60) {
-        spawnIntervalRef.current -= 2;
+      // 逐渐加快生成速度 - 横屏模式下减慢加速速度
+      const speedIncrement = isLandscape ? 1 : 2; // 横屏模式下每次只减1，竖屏减2
+      const minInterval = isLandscape ? 90 : 60; // 横屏模式下最小间隔更大
+      if (spawnIntervalRef.current > minInterval) {
+        spawnIntervalRef.current -= speedIncrement;
       }
     }
 
@@ -150,8 +153,10 @@ export const ColorMatchGame: React.FC<GameComponentProps> = ({
     const itemsToRemove: number[] = [];
     
     itemsRef.current.forEach((item, index) => {
-      // 移动物品
-      item.y += 1 + scoreRef.current * 0.01; // 速度随分数增加
+      // 移动物品 - 横屏模式下降低速度
+      const isLandscape = width > height;
+      const baseSpeed = isLandscape ? 0.5 : 1; // 横屏模式下速度减半
+      item.y += baseSpeed + scoreRef.current * 0.01; // 速度随分数增加
 
       // 检查是否超出屏幕
       if (item.y > height + item.size) {
@@ -352,6 +357,9 @@ export const ColorMatchGame: React.FC<GameComponentProps> = ({
     if (ctx) {
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
+      // 立即绘制紫色背景
+      ctx.fillStyle = '#A855F7'; // 更亮的紫色
+      ctx.fillRect(0, 0, width, height);
     }
   }, [width, height]);
 
@@ -364,24 +372,25 @@ export const ColorMatchGame: React.FC<GameComponentProps> = ({
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
       }
+      // 游戏未开始时也绘制紫色背景
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#A855F7';
+          ctx.fillRect(0, 0, width, height);
+        }
+      }
     }
     return () => {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
       }
     };
-  }, [isPlaying, initGame, animate]);
+  }, [isPlaying, initGame, animate, width, height]);
 
   return (
-    <div className="relative w-full h-full">
-      {/* 红蓝分视提示层 */}
-      <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-        <div className="bg-black/50 backdrop-blur-sm rounded-lg p-4 text-white text-center max-w-md mx-4">
-          <p className="text-sm mb-2">🔴 红色物品 = 左眼可见</p>
-          <p className="text-sm mb-2">🔵 蓝色物品 = 右眼可见</p>
-          <p className="text-xs text-gray-300">点击相同形状的红蓝物品进行配对</p>
-        </div>
-      </div>
+    <div className="relative w-full h-full" style={{ backgroundColor: '#A855F7' }}>
       {/* 错误提示 */}
       {errorMessage && (
         <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
@@ -397,6 +406,7 @@ export const ColorMatchGame: React.FC<GameComponentProps> = ({
         className="block w-full h-full cursor-pointer"
         style={{
           filter: 'contrast(1.2)',
+          backgroundColor: '#A855F7',
         }}
       />
     </div>

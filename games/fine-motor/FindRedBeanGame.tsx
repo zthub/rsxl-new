@@ -19,6 +19,7 @@ export const FindRedBeanGame: React.FC<GameComponentProps> = ({
   const [isSuccess, setIsSuccess] = useState(false);
   const [showVictory, setShowVictory] = useState(false);
   const [wrongClickIndex, setWrongClickIndex] = useState<number | null>(null);
+  const [visibleItems, setVisibleItems] = useState<Set<number>>(new Set());
   const isFirstStartRef = React.useRef(true);
 
   // Initialize a round
@@ -28,6 +29,7 @@ export const FindRedBeanGame: React.FC<GameComponentProps> = ({
     setIsSuccess(false);
     setShowVictory(false);
     setWrongClickIndex(null);
+    setVisibleItems(new Set()); // 重置可见项
   }, []);
 
   // Initial Start
@@ -44,6 +46,21 @@ export const FindRedBeanGame: React.FC<GameComponentProps> = ({
       isFirstStartRef.current = true;
     }
   }, [isPlaying, generateRound]);
+
+  // 逐个显示格子
+  useEffect(() => {
+    if (!isPlaying || showVictory) return;
+    
+    const totalItems = ROWS * COLS;
+    const delayPerItem = 30; // 每个格子之间的延迟（毫秒）
+    
+    // 逐个显示格子
+    for (let i = 0; i < totalItems; i++) {
+      setTimeout(() => {
+        setVisibleItems(prev => new Set([...prev, i]));
+      }, i * delayPerItem);
+    }
+  }, [isPlaying, targetIndex, showVictory]); // 当 targetIndex 改变时重新显示
 
   const handleItemClick = (index: number) => {
     if (!isPlaying || isSuccess || showVictory) return;
@@ -80,14 +97,14 @@ export const FindRedBeanGame: React.FC<GameComponentProps> = ({
     }
   };
 
-  // Calculate layout
-  const aspectRatio = COLS / ROWS;
-  const padding = 0.8;
-  const availableWidth = width * padding;
-  const availableHeight = height * padding - 80;
-  const maxWidthByHeight = availableHeight * aspectRatio;
-  const boardWidth = Math.min(availableWidth, maxWidthByHeight);
-  const boardHeight = boardWidth / aspectRatio;
+  // Calculate layout - 铺满整个屏幕
+  const isMobile = width < 768;
+  const headerHeight = 60; // Header 高度
+  const availableHeight = height - headerHeight;
+  
+  // 根据屏幕尺寸自适应：铺满整个可用空间
+  const boardWidth = width;
+  const boardHeight = availableHeight;
 
   return (
     <div className="relative w-full h-full flex flex-col items-center justify-center bg-red-50">
@@ -120,22 +137,33 @@ export const FindRedBeanGame: React.FC<GameComponentProps> = ({
         </div>
       </div>
 
-      {/* Game Grid */}
+      {/* Game Grid - 铺满整个屏幕 */}
       <div 
-        className={`grid gap-2 md:gap-3 p-4 bg-white/40 rounded-3xl shadow-sm border border-white/50 transition-opacity ${showVictory ? 'opacity-50' : ''}`}
+        className={`grid ${isMobile ? 'gap-1 p-2' : 'gap-2 md:gap-3 p-4'} bg-white/40 rounded-3xl shadow-sm border border-white/50 transition-opacity ${showVictory ? 'opacity-50' : ''}`}
         style={{
           gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${ROWS}, minmax(0, 1fr))`,
           width: boardWidth,
           height: boardHeight,
           maxWidth: '100%',
+          maxHeight: '100%',
         }}
       >
         {Array.from({ length: ROWS * COLS }).map((_, i) => {
           const isTarget = i === targetIndex;
           const isWrongClick = wrongClickIndex === i;
+          const isVisible = visibleItems.has(i);
           return (
-            <div key={i} className="relative w-full h-full flex items-center justify-center">
+            <div 
+              key={i} 
+              className="relative w-full h-full flex items-center justify-center"
+              style={{
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? 'scale(1)' : 'scale(0.3)',
+                transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+                pointerEvents: isVisible ? 'auto' : 'none', // 未显示的格子不可点击
+              }}
+            >
               <div className={`w-full h-full transition-all duration-300 ${isTarget && isSuccess ? 'scale-125 brightness-110 drop-shadow-xl z-10' : ''} ${isWrongClick ? 'opacity-70 scale-95' : ''}`}>
                   {isTarget ? (
                       <RedBeanIcon 

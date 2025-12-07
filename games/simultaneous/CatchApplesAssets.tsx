@@ -89,7 +89,7 @@ export const BasketIcon: React.FC<{ className?: string; onClick?: () => void }> 
   onClick,
 }) => (
   <div className={className} onClick={onClick}>
-    <svg viewBox="0 0 100 80" className="w-full h-full drop-shadow-xl">
+    <svg viewBox="10 30 80 55" className="w-full h-full drop-shadow-xl" preserveAspectRatio="xMidYMid meet">
       {/* 篮子主体 - 通体红色 */}
       <path d="M10 30 L20 75 Q50 85 80 75 L90 30 Z" fill="#DC2626" />
     </svg>

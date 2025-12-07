@@ -150,11 +150,19 @@ export const ProtectChicksGame: React.FC<GameComponentProps> = ({
 
   // Calculate layout
   const aspectRatio = COLS / ROWS;
-  const padding = 0.85;
+  // 手机横屏模式：充分利用横向空间
+  const isMobileLandscape = width > height && width < 768;
+  // 横屏模式下，减少高度扣除，增加可用空间
+  const heightDeduction = isMobileLandscape ? 60 : 150;
+  // 横屏模式下，使用更大的 padding 来充分利用空间
+  const padding = isMobileLandscape ? 0.98 : 0.85;
   const availableWidth = width * padding;
-  const availableHeight = height * padding - 150;
+  const availableHeight = height * padding - heightDeduction;
   const maxWidthByHeight = availableHeight * aspectRatio;
-  const boardWidth = Math.min(availableWidth, maxWidthByHeight);
+  // 横屏模式下，优先使用宽度，充分利用横向空间
+  const boardWidth = isMobileLandscape 
+    ? Math.min(availableWidth * 0.95, maxWidthByHeight * 1.1) 
+    : Math.min(availableWidth, maxWidthByHeight);
   const boardHeight = boardWidth / aspectRatio;
   
   return (
@@ -182,14 +190,14 @@ export const ProtectChicksGame: React.FC<GameComponentProps> = ({
           );
       })}
 
-      {/* Header */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-6 z-10">
-        <div className="flex items-center gap-2 bg-cyan-700/20 px-4 py-1 rounded-full border border-cyan-600/30">
-          <Trophy className="text-yellow-600" size={20} />
-          <span className="text-cyan-900 font-mono font-bold text-xl">{score}</span>
+      {/* Header - 手机横屏模式下调整位置 */}
+      <div className={`absolute ${isMobileLandscape ? 'top-2' : 'top-4'} left-1/2 -translate-x-1/2 flex items-center gap-4 z-10`}>
+        <div className={`flex items-center gap-2 bg-cyan-700/20 ${isMobileLandscape ? 'px-3 py-0.5' : 'px-4 py-1'} rounded-full border border-cyan-600/30`}>
+          <Trophy className="text-yellow-600" size={isMobileLandscape ? 16 : 20} />
+          <span className={`text-cyan-900 font-mono font-bold ${isMobileLandscape ? 'text-base' : 'text-xl'}`}>{score}</span>
         </div>
-        <div className="flex items-center gap-1 text-orange-700 font-bold bg-white/50 px-3 py-1 rounded-full">
-          <Target size={20} />
+        <div className={`flex items-center gap-1 text-orange-700 font-bold bg-white/50 ${isMobileLandscape ? 'px-2 py-0.5 text-sm' : 'px-3 py-1'} rounded-full`}>
+          <Target size={isMobileLandscape ? 16 : 20} />
           <span>剩 {eaglesLeft} 只</span>
         </div>
       </div>
@@ -215,16 +223,23 @@ export const ProtectChicksGame: React.FC<GameComponentProps> = ({
         </div>
       )}
 
-      {/* Game Grid */}
-      <div className="flex-1 flex items-center justify-center mb-10">
+      {/* Game Grid - 手机横屏模式下调整布局 */}
+      <div 
+        className={`flex-1 flex items-center justify-center ${isMobileLandscape ? 'my-1' : 'mb-10'}`} 
+        style={{ 
+          width: '100%',
+          paddingTop: isMobileLandscape ? '40px' : '0', // 为顶部信息留出空间
+        }}
+      >
           <div 
               ref={gridRef}
-              className={`grid gap-2 md:gap-3 lg:gap-4 p-2 bg-white/30 rounded-2xl shadow-sm transition-opacity ${showVictory ? 'opacity-50' : ''}`}
+              className={`grid ${isMobileLandscape ? 'gap-1 p-1' : 'gap-2 md:gap-3 lg:gap-4 p-2'} bg-white/30 rounded-2xl shadow-sm transition-opacity ${showVictory ? 'opacity-50' : ''}`}
               style={{
                   gridTemplateColumns: `repeat(${COLS}, minmax(0, 1fr))`,
                   gridTemplateRows: `repeat(${ROWS}, minmax(0, 1fr))`,
                   width: boardWidth,
                   height: boardHeight,
+                  margin: '0 auto',
               }}
           >
           {gridItems.map((item, i) => (
@@ -254,10 +269,10 @@ export const ProtectChicksGame: React.FC<GameComponentProps> = ({
           </div>
       </div>
 
-      {/* The Bow at the bottom */}
-      <div className="h-24 w-full flex justify-center items-end relative pb-4">
+      {/* The Bow at the bottom - 手机横屏模式下缩小并调整位置 */}
+      <div className={`w-full flex justify-center items-end relative ${isMobileLandscape ? 'h-12 pb-1' : 'h-24 pb-4'}`}>
            {/* Decorative Bow - Pointing UP */}
-           <div ref={bowRef} className="relative w-40 h-20 flex justify-center items-end">
+           <div ref={bowRef} className={`relative ${isMobileLandscape ? 'w-24 h-12' : 'w-40 h-20'} flex justify-center items-end`}>
                 {/* Bow Shape: Curving UP (ends down), String pulled DOWN */}
                 <svg viewBox="0 0 100 60" className="w-full h-full drop-shadow-xl overflow-visible">
                     {/* Wood part - Curve Upwards */}
@@ -270,17 +285,19 @@ export const ProtectChicksGame: React.FC<GameComponentProps> = ({
                 {/* Static arrow ready to fire - hide when shooting */}
                 {!isShooting && (
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-4 transition-opacity duration-200">
-                        <Arrow className="w-6 h-16" />
+                        <Arrow className={isMobileLandscape ? "w-4 h-10" : "w-6 h-16"} />
                     </div>
                 )}
                 {/* Shooting animation - arrow flies out */}
                 {isShooting && (
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-4 animate-[shoot_0.5s_ease-out_forwards]">
-                        <Arrow className="w-6 h-16 opacity-0" />
+                        <Arrow className={isMobileLandscape ? "w-4 h-10 opacity-0" : "w-6 h-16 opacity-0"} />
                     </div>
                 )}
            </div>
-           <p className="absolute bottom-0 text-cyan-800/60 text-sm font-bold tracking-widest">点击老鹰射击</p>
+           {!isMobileLandscape && (
+             <p className="absolute bottom-0 text-cyan-800/60 text-sm font-bold tracking-widest">点击老鹰射击</p>
+           )}
       </div>
 
       {/* Inline styles for shoot animation */}

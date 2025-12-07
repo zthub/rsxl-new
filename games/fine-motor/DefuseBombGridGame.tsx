@@ -139,9 +139,12 @@ export const DefuseBombGridGame: React.FC<GameComponentProps> = ({
 
   // Calculate layout
   const aspectRatio = COLS / ROWS;
-  const padding = 0.85;
+  // 手机横屏模式：增加 padding 和减少高度扣除
+  const isMobileLandscape = width > height && width < 768;
+  const padding = isMobileLandscape ? 0.95 : 0.85;
+  const heightDeduction = isMobileLandscape ? 80 : 100;
   const availableWidth = width * padding;
-  const availableHeight = height * padding - 100;
+  const availableHeight = height * padding - heightDeduction;
   const maxWidthByHeight = availableHeight * aspectRatio;
   const boardWidth = Math.min(availableWidth, maxWidthByHeight);
   const boardHeight = boardWidth / aspectRatio;
@@ -194,6 +197,7 @@ export const DefuseBombGridGame: React.FC<GameComponentProps> = ({
           height: boardHeight,
           maxHeight: '85vh', 
           maxWidth: '100%',
+          margin: '0 auto', // 确保居中
         }}
       >
         {Array.from({ length: ROWS * COLS }).map((_, i) => {

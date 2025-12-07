@@ -27,8 +27,8 @@ export const GamePlayer: React.FC = () => {
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
                    (window.innerWidth <= 768);
   
-  // Games that should not use fullscreen on mobile (g2-6: 俄罗斯方块新, g2-7: 动物消消乐)
-  const gamesWithoutFullscreenOnMobile = ['g2-5', 'g2-6', 'g2-7'];
+  // Games that should not use fullscreen on mobile (g2-6: 俄罗斯方块新, g2-7: 动物消消乐, g2-8: 拆炸弹, g2-9: 保护小鸡, g3-1: 红蓝俄罗斯方块)
+  const gamesWithoutFullscreenOnMobile = ['g2-5', 'g2-6', 'g2-7', 'g2-8', 'g2-9', 'g3-1'];
   const shouldUseFullscreen = !(isMobile && gamesWithoutFullscreenOnMobile.includes(gameId || ''));
   
   // Determine Game Duration
@@ -264,7 +264,7 @@ export const GamePlayer: React.FC = () => {
       </div>
 
       {/* Game Area */}
-      <div className="w-full h-full relative bg-black overflow-hidden">
+      <div className={`w-full h-full relative overflow-hidden ${gameId === 'g3-3' ? '' : 'bg-black'}`}>
         {dimensions.width > 0 && GameComponent && (
             <GameComponent 
                 key={restartKey} // 关键：Key 变化时 React 会完全销毁并重建组件

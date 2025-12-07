@@ -38,25 +38,31 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
   // 初始化静态苹果
   useEffect(() => {
     if (!isPlaying) return;
+    const isLandscape = width > height;
     const apples: StaticApple[] = [];
-    // 将苹果集中在树冠区域（树的顶部中心）
+    // 将苹果集中在树冠区域（树的顶部中心），扩大范围
+    const xMin = isLandscape ? 30 : 10;
+    const xMax = isLandscape ? 70 : 90;
     for (let i = 0; i < 8; i++) {
       apples.push({
-        x: 30 + Math.random() * 40, // 30% to 70% width
+        x: xMin + Math.random() * (xMax - xMin), // 根据横竖屏调整范围
         y: 5 + Math.random() * 25,  // 5% to 30% height (Upper tree canopy)
       });
     }
     setStaticApples(apples);
-  }, [isPlaying]);
+  }, [isPlaying, width, height]);
 
   // 生成新苹果
   const spawnApple = useCallback(() => {
     if (!isPlaying || gameOver) return;
-    // 从树宽范围内生成（35% to 65%）
-    const startX = 35 + Math.random() * 30;
+    // 从树宽范围内生成，扩大掉落范围
+    const isLandscape = width > height;
+    const xMin = isLandscape ? 30 : 15;
+    const xMax = isLandscape ? 70 : 85;
+    const startX = xMin + Math.random() * (xMax - xMin);
     appleRef.current = { x: startX, y: 20, active: true }; // 从树冠稍低的位置开始
     setFallingApple({ ...appleRef.current });
-  }, [isPlaying, gameOver]);
+  }, [isPlaying, gameOver, width, height]);
 
   // 游戏循环
   const updateGame = useCallback(() => {
@@ -149,9 +155,9 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
     const apple = appleRef.current;
 
     // 明确计算篮子的实际区域（像素）
-    // 篮子：bottom-[10%]，宽度90px，高度90px，中心在 basketX%
-    const basketWidthPx = 90;
-    const basketHeightPx = 90;
+    // 篮子：bottom-[10%]，path实际尺寸72*45，宽高比1.6:1，容器调整为匹配
+    const basketWidthPx = 90; // 保持宽度90px
+    const basketHeightPx = 90 / 1.6; // 高度按宽高比计算，约56.25px
     const basketBottomPercent = 90; // 篮子底部距离屏幕顶部90%
     const basketTopPercent = basketBottomPercent - (basketHeightPx / height * 100); // 篮子顶部位置
     
@@ -166,6 +172,8 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
     
     // 计算苹果底部位置（苹果中心 + 苹果高度的一半）
     const appleBottomPercent = apple.y + appleHalfSizePercentV;
+    // 计算苹果顶部位置（苹果中心 - 苹果高度的一半）
+    const appleTopPercent = apple.y - appleHalfSizePercentV;
     
     // 碰撞检测规则：
     // 1. 水平：苹果必须在篮子水平范围内
@@ -173,7 +181,9 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
     const appleRight = apple.x + appleHalfSizePercent;
     const isHorizontalInRange = appleRight >= basketLeftPercent && appleLeft <= basketRightPercent;
     
-    // 2. 垂直：苹果底部必须在篮子顶部和底部之间（未碰到篮子顶部时不能接，出了篮子底部也不能接）
+    // 2. 垂直：苹果底部必须碰到篮子顶部才能接住
+    // 苹果底部必须 >= 篮子顶部（进入篮子范围），并且 <= 篮子底部（还没掉出篮子）
+    // 同时苹果顶部应该 <= 篮子底部（确保苹果在篮子范围内或刚好碰到）
     const isVerticalInRange = appleBottomPercent >= basketTopPercent && appleBottomPercent <= basketBottomPercent;
 
     if (isVerticalInRange && isHorizontalInRange) {
@@ -291,28 +301,24 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
             left: `${basketX}%`,
             transform: 'translateX(-50%)',
             width: '90px',
-            height: '90px',
+            height: '56.25px', // 匹配path的宽高比 72:45 = 1.6:1
           }}
           onClick={handleBasketClick}
         >
           <div className="w-full h-full relative group">
             <BasketIcon className="w-full h-full filter drop-shadow-2xl group-hover:scale-110 transition-transform" />
-            {/* 点击提示 - 显示在篮子内部 */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/80 text-purple-900 font-bold px-3 py-1 rounded-full text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-              点击!
-            </div>
           </div>
         </div>
 
         {/* 反馈提示 - 接住或未接住 */}
         {feedback.show && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none">
-            <div className={`px-8 py-4 rounded-2xl shadow-2xl animate-bounce ${
+            <div className={`px-4 py-2 rounded-xl shadow-lg animate-bounce ${
               feedback.type === 'success' 
                 ? 'bg-green-500 text-white' 
                 : 'bg-red-500 text-white'
             }`}>
-              <p className="text-5xl font-black">
+              <p className="text-2xl font-black">
                 {feedback.type === 'success' ? '✓' : '✗'}
               </p>
             </div>
