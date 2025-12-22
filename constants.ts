@@ -19,6 +19,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g1-11', title: '顽皮兔大作战', description: '敲击兔子得分，小心避开炸弹！', difficulty: 'Medium' },
       { id: 'g1-12', title: '动物拼图', description: '拖动碎片还原可爱的动物形象', difficulty: 'Easy' },
       { id: 'g1-13', title: '欢乐矿工', description: '看准时机，抓取星星和宝藏！', difficulty: 'Medium' },
+      { id: 'g1-14', title: '快乐停车场', description: '移动车辆为红色小车让路，从右侧出口开出！', difficulty: 'Medium' },
       // 强闪永远放在视觉刺激模块的最后
       { id: 'g1-4', title: '强闪刺激', description: '整屏在红黄蓝黑白之间快速闪烁，可根据视力自动调频并手动微调速率', difficulty: 'Medium' },
     ]
@@ -41,6 +42,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g2-8', title: '拆炸弹', description: '在倒计时结束前找出正确炸弹并点击', difficulty: 'Medium' },
       { id: 'g2-9', title: '保护小鸡', description: '快速找出老鹰，避免误点到小鸡', difficulty: 'Medium' },
       { id: 'g2-10', title: '找红豆', description: '在一堆相似小豆中精准找出红豆', difficulty: 'Medium' },
+      { id: 'g2-11', title: '找朋友', description: '在一群小朋友中找到和上面完全一样的那一个！', difficulty: 'Medium' },
     ]
   },
   {

@@ -202,6 +202,8 @@ export const GamePlayer: React.FC = () => {
       setGameOver(true);
       setIsPlaying(false);
       setGameOverReason('FAILURE'); // 标记为游戏失败
+      // 直接调用goBack函数执行导航，确保返回正确的模块列表页面
+      goBack();
   };
 
   // Resolve Component

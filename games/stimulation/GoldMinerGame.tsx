@@ -631,7 +631,7 @@ export const GoldMinerGame: React.FC<GameComponentProps> = ({ width, height, isP
             />
 
             {/* HUD */}
-            <div className="absolute top-20 left-0 w-full px-4 pointer-events-none flex justify-center gap-2 md:gap-4 z-10 flex-wrap">
+            <div className="absolute top-12 right-4 pointer-events-none flex flex-col gap-2 md:flex-row md:gap-2 z-10">
                 <div className="bg-slate-900/80 px-3 py-1 rounded-xl border border-slate-700 text-center min-w-[70px]">
                     <div className="text-[10px] text-slate-400">目标</div>
                     <div className="text-lg font-bold text-green-400">${targetMoney}</div>

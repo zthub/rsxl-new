@@ -494,32 +494,44 @@ export const HexagonGame: React.FC<GameComponentProps> = ({ width, height, isPla
         // Draw Dashboard (Level & Time)
         const uiX = 20;
         const uiY = 80;
+        
+        // 根据屏幕方向调整UI尺寸
+        const isLandscape = !isPortrait;
+        const uiWidth = isLandscape ? 140 : 180;
+        const uiHeight = isLandscape ? 70 : 90;
+        
         ctx.fillStyle = 'rgba(255,255,255,0.8)';
-        ctx.beginPath(); ctx.roundRect(uiX, uiY, 180, 90, 10); ctx.fill();
+        ctx.beginPath(); ctx.roundRect(uiX, uiY, uiWidth, uiHeight, 10); ctx.fill();
         ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth=2; ctx.stroke();
         
-        ctx.fillStyle = '#1e293b'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'left';
-        ctx.fillText(`第 ${level} 关`, uiX + 15, uiY + 25);
+        // 调整字体大小
+        const levelFontSize = isLandscape ? '14px' : '16px';
+        const timeFontSize = isLandscape ? '14px' : '16px';
+        const progressFontSize = isLandscape ? '11px' : '12px';
+        
+        ctx.fillStyle = '#1e293b'; ctx.font = `bold ${levelFontSize} sans-serif`; ctx.textAlign = 'left';
+        ctx.fillText(`第 ${level} 关`, uiX + 12, uiY + 22);
         
         // Time Display
         const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
         const s = (timeLeft % 60).toString().padStart(2, '0');
         const timeStr = `${m}:${s}`;
         ctx.fillStyle = timeLeft < 10 ? '#ef4444' : '#3b82f6';
-        ctx.font = 'bold 16px monospace';
+        ctx.font = `bold ${timeFontSize} monospace`;
         ctx.textAlign = 'right';
-        ctx.fillText(timeStr, uiX + 165, uiY + 25);
+        ctx.fillText(timeStr, uiX + uiWidth - 15, uiY + 22);
 
         // 使用与计算逻辑一致的目标分数：第一关90分，后面每关增加30分
         const target = 90 + (level - 1) * 30;
         const progress = Math.min(1, levelScore / target);
         
-        ctx.fillStyle = '#94a3b8'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-        ctx.fillText(`进度: ${levelScore} / ${target}`, uiX + 15, uiY + 50);
+        ctx.fillStyle = '#94a3b8'; ctx.font = `${progressFontSize} sans-serif`; ctx.textAlign = 'left';
+        ctx.fillText(`进度: ${levelScore} / ${target}`, uiX + 12, uiY + 42);
         
         // Progress bar
-        ctx.fillStyle = '#e2e8f0'; ctx.fillRect(uiX + 15, uiY + 60, 150, 8);
-        ctx.fillStyle = '#3b82f6'; ctx.fillRect(uiX + 15, uiY + 60, 150 * progress, 8);
+        const progressBarWidth = isLandscape ? 110 : 150;
+        ctx.fillStyle = '#e2e8f0'; ctx.fillRect(uiX + 12, uiY + 52, progressBarWidth, 6);
+        ctx.fillStyle = '#3b82f6'; ctx.fillRect(uiX + 12, uiY + 52, progressBarWidth * progress, 6);
 
         // Level Up Overlay
         if (showLevelUp) {

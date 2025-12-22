@@ -121,6 +121,13 @@ export const MazeGame: React.FC<GameComponentProps> = ({ width, height, isPlayin
         }
     }, [isPlaying, generateMaze]);
 
+    // Regenerate maze when level changes
+    useEffect(() => {
+        if (initializedRef.current) {
+            generateMaze();
+        }
+    }, [level, generateMaze]);
+
     // Movement Logic
     const movePlayer = (dir: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT'): boolean => {
         const { c, r } = playerRef.current;

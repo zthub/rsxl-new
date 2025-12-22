@@ -53,6 +53,13 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
     
     // 初始化标记 Ref
     const initializedRef = useRef(false);
+    
+    // 拖动状态跟踪
+    const draggingDecorationRef = useRef<number | null>(null); // 正在拖动的装饰ID
+    const dragStartPosRef = useRef<{x: number, y: number} | null>(null); // 拖动开始位置
+    const dragOffsetRef = useRef<{x: number, y: number} | null>(null); // 拖动偏移量
+    const clickTimerRef = useRef<number | null>(null); // 用于区分单击和长按的计时器
+    const clickDecorationRef = useRef<number | null>(null); // 单击的装饰ID
 
     // 生成下一个水果
     const spawnNextFruit = useCallback(() => {
@@ -110,22 +117,31 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
         }
     }, [isPlaying, spawnNextFruit]);
 
-    // 处理交互（点击/触摸）
-    const handleInteraction = (clientX: number, clientY: number) => {
+    // 处理交互开始（点击/触摸开始）
+    const handleInteractionStart = (clientX: number, clientY: number) => {
         if (!isPlaying) return;
 
-        // 1. 检查是否点击了已有的装饰挂件 (互动语音)
+        // 1. 检查是否点击了已有的装饰挂件
         for (const dec of decorationsRef.current) {
-            const size = dec.scale * 50; 
+            const size = dec.scale * 60; // 增大点击检测区域
             if (Math.hypot(clientX - dec.x, clientY - dec.y) < size) {
-                const charmInfo = CHARMS.find(c => c.icon === dec.icon);
-                if (charmInfo) {
-                    dec.speechBubble = { text: charmInfo.label, timer: 120 };
-                    dec.scale *= 1.2;
-                    setTimeout(() => { dec.scale /= 1.2; }, 200);
-                    playSound('shoot');
-                }
-                return; 
+                // 记录点击的装饰ID和位置
+                clickDecorationRef.current = dec.id;
+                dragStartPosRef.current = { x: clientX, y: clientY };
+                dragOffsetRef.current = { x: clientX - dec.x, y: clientY - dec.y };
+                
+                // 启动计时器，区分单击和长按拖动
+                if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+                clickTimerRef.current = window.setTimeout(() => {
+                    // 长按超过200ms，开始拖动
+                    draggingDecorationRef.current = dec.id;
+                    // 将挂件设置为浮动状态，以便可以拖动
+                    dec.state = 'FLOATING';
+                    dec.targetX = undefined;
+                    dec.targetY = undefined;
+                }, 200);
+                
+                return;
             }
         }
 
@@ -185,6 +201,69 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
         }
     };
 
+    // 处理交互移动（拖动）
+    const handleInteractionMove = (clientX: number, clientY: number) => {
+        if (!isPlaying || draggingDecorationRef.current === null || dragOffsetRef.current === null) return;
+
+        const decorationId = draggingDecorationRef.current;
+        const decoration = decorationsRef.current.find(dec => dec.id === decorationId);
+        
+        if (decoration) {
+            // 更新挂件位置，考虑拖动偏移量
+            decoration.x = clientX - dragOffsetRef.current.x;
+            decoration.y = clientY - dragOffsetRef.current.y;
+            
+            // 确保挂件不会移出画布
+            decoration.x = Math.max(25, Math.min(width - 25, decoration.x));
+            decoration.y = Math.max(25, Math.min(height - 25, decoration.y));
+        }
+    };
+
+    // 处理交互结束（拖动结束或单击完成）
+    const handleInteractionEnd = () => {
+        if (!isPlaying) return;
+
+        // 1. 清除计时器
+        if (clickTimerRef.current) {
+            clearTimeout(clickTimerRef.current);
+            clickTimerRef.current = null;
+        }
+
+        // 2. 检查是否完成了拖动
+        if (draggingDecorationRef.current !== null) {
+            const decorationId = draggingDecorationRef.current;
+            const decoration = decorationsRef.current.find(dec => dec.id === decorationId);
+            
+            if (decoration) {
+                // 将挂件设置为停靠状态，保持在当前位置
+                decoration.state = 'DOCKED';
+            }
+            
+            // 重置拖动状态
+            draggingDecorationRef.current = null;
+        } 
+        // 3. 检查是否是单击操作（没有开始拖动）
+        else if (clickDecorationRef.current !== null) {
+            const decorationId = clickDecorationRef.current;
+            const decoration = decorationsRef.current.find(dec => dec.id === decorationId);
+            
+            if (decoration) {
+                const charmInfo = CHARMS.find(c => c.icon === decoration.icon);
+                if (charmInfo) {
+                    decoration.speechBubble = { text: charmInfo.label, timer: 120 };
+                    decoration.scale *= 1.2;
+                    setTimeout(() => { decoration.scale /= 1.2; }, 200);
+                    playSound('shoot');
+                }
+            }
+        }
+        
+        // 重置所有状态
+        clickDecorationRef.current = null;
+        dragStartPosRef.current = null;
+        dragOffsetRef.current = null;
+    };
+
     // 动画循环
     const animate = useCallback(() => {
         const canvas = canvasRef.current;
@@ -199,7 +278,10 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
         
         // 2. 更新装饰挂件位置
         decorationsRef.current.forEach(dec => {
-            if (dec.state === 'FLOATING') {
+            // 检查挂件是否正在被拖动
+            const isDragging = draggingDecorationRef.current === dec.id;
+            
+            if (dec.state === 'FLOATING' && !isDragging) {
                 // 智能停靠逻辑：只停靠左右，且寻找空位，往上面飘
                 if (dec.targetX === undefined) {
                     // 随机选择左侧或右侧
@@ -251,9 +333,12 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
                 if (Math.abs(dx) < 1 && Math.abs(dy) < 1) {
                     dec.state = 'DOCKED';
                 }
-            } else {
+            } else if (dec.state === 'DOCKED' || isDragging) {
                 // DOCKED: 轻轻漂浮
-                dec.y += Math.sin(frameCountRef.current * 0.05) * 0.2;
+                // 如果正在拖动，不执行漂浮动画，保持用户设置的位置
+                if (!isDragging) {
+                    dec.y += Math.sin(frameCountRef.current * 0.05) * 0.2;
+                }
             }
             
             ctx.save();
@@ -500,7 +585,17 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
             ref={canvasRef} 
             onPointerDown={(e) => {
                 const rect = canvasRef.current?.getBoundingClientRect();
-                if(rect) handleInteraction(e.clientX - rect.left, e.clientY - rect.top);
+                if(rect) handleInteractionStart(e.clientX - rect.left, e.clientY - rect.top);
+            }}
+            onPointerMove={(e) => {
+                const rect = canvasRef.current?.getBoundingClientRect();
+                if(rect) handleInteractionMove(e.clientX - rect.left, e.clientY - rect.top);
+            }}
+            onPointerUp={() => {
+                handleInteractionEnd();
+            }}
+            onPointerLeave={() => {
+                handleInteractionEnd();
             }}
             className="block touch-none cursor-pointer" 
         />

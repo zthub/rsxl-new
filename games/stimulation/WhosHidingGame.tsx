@@ -54,10 +54,10 @@ export const WhosHidingGame: React.FC<GameComponentProps> = ({ width, height, is
         setMessage('请记住它们！');
         setSelectedOption(null);
 
-        // 3秒后进入遮挡阶段
+        // 1.5秒后进入遮挡阶段
         setTimeout(() => {
             if (isPlaying) setPhase('HIDING_ANIMATION');
-        }, 3000);
+        }, 1500);
 
     }, [isPlaying]);
 

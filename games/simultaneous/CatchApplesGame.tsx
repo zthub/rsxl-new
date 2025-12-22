@@ -29,6 +29,7 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
   const [gameOver, setGameOver] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'miss'; show: boolean }>({ type: 'success', show: false });
   const [gameStarted, setGameStarted] = useState(false); // 标记游戏是否已开始（已接住过至少一个苹果）
+  const [showHint, setShowHint] = useState(true); // 控制提示显示
 
   const containerRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>(0);
@@ -40,9 +41,9 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
     if (!isPlaying) return;
     const isLandscape = width > height;
     const apples: StaticApple[] = [];
-    // 将苹果集中在树冠区域（树的顶部中心），扩大范围
-    const xMin = isLandscape ? 30 : 10;
-    const xMax = isLandscape ? 70 : 90;
+    // 将苹果集中在树冠区域（树的顶部中心），扩大范围以匹配树宽
+    const xMin = isLandscape ? 10 : 5;
+    const xMax = isLandscape ? 90 : 95;
     for (let i = 0; i < 8; i++) {
       apples.push({
         x: xMin + Math.random() * (xMax - xMin), // 根据横竖屏调整范围
@@ -55,10 +56,10 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
   // 生成新苹果
   const spawnApple = useCallback(() => {
     if (!isPlaying || gameOver) return;
-    // 从树宽范围内生成，扩大掉落范围
+    // 从树宽范围内生成，扩大掉落范围以匹配树宽
     const isLandscape = width > height;
-    const xMin = isLandscape ? 30 : 15;
-    const xMax = isLandscape ? 70 : 85;
+    const xMin = isLandscape ? 10 : 5;
+    const xMax = isLandscape ? 90 : 95;
     const startX = xMin + Math.random() * (xMax - xMin);
     appleRef.current = { x: startX, y: 20, active: true }; // 从树冠稍低的位置开始
     setFallingApple({ ...appleRef.current });
@@ -181,10 +182,15 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
     const appleRight = apple.x + appleHalfSizePercent;
     const isHorizontalInRange = appleRight >= basketLeftPercent && appleLeft <= basketRightPercent;
     
-    // 2. 垂直：苹果底部必须碰到篮子顶部才能接住
-    // 苹果底部必须 >= 篮子顶部（进入篮子范围），并且 <= 篮子底部（还没掉出篮子）
-    // 同时苹果顶部应该 <= 篮子底部（确保苹果在篮子范围内或刚好碰到）
-    const isVerticalInRange = appleBottomPercent >= basketTopPercent && appleBottomPercent <= basketBottomPercent;
+    // 2. 垂直：只要苹果任何部分与篮子有重叠就可以接住，但苹果底部不能超过篮子底部太多
+    // 规则：苹果顶部 <= 篮子底部 且 苹果底部 >= 篮子顶部（有重叠）
+    // 同时限制：苹果底部不能超过篮子底部太多（最多超过篮子高度的50%）
+    const basketHeightPercent = basketBottomPercent - basketTopPercent; // 篮子高度百分比
+    const maxOverflow = basketHeightPercent * 0.5; // 允许苹果底部最多超过篮子底部50%的篮子高度
+    // 苹果与篮子有重叠，且苹果底部不超过篮子底部太多
+    const hasVerticalOverlap = appleTopPercent <= basketBottomPercent && appleBottomPercent >= basketTopPercent;
+    const isNotTooFarBeyond = appleBottomPercent <= (basketBottomPercent + maxOverflow);
+    const isVerticalInRange = hasVerticalOverlap && isNotTooFarBeyond;
 
     if (isVerticalInRange && isHorizontalInRange) {
       // 接住了！
@@ -193,6 +199,7 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
       missedCountRef.current = 0; // 重置未接住计数
       setMissedCount(0);
       setGameStarted(true); // 标记游戏已开始
+      setShowHint(false); // 隐藏提示
       appleRef.current.active = false; // 立即隐藏
       setFallingApple(null);
       
@@ -227,12 +234,17 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
       setGameOver(false);
       setFeedback({ type: 'success', show: false });
       setGameStarted(false); // 重置游戏开始标记
+      setShowHint(true); // 显示提示
       missedCountRef.current = 0;
       appleRef.current = null;
-      // 游戏开始时立即生成第一个苹果
+      // 游戏开始时延迟生成第一个苹果，让提示有时间显示
       setTimeout(() => {
         spawnApple();
-      }, 500);
+        // 4秒后自动隐藏提示（给用户足够时间看提示）
+        setTimeout(() => {
+          setShowHint(false);
+        }, 4000);
+      }, 1000);
     }
   }, [isPlaying, spawnApple]);
 
@@ -283,8 +295,8 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
               transform: 'translate(-50%, -50%)',
             }}
           >
-            {/* 蓝色苹果 - 使用红蓝配对消除中的蓝色 (#3B82F6) */}
-            <AppleIcon color="#3B82F6" className="w-full h-full drop-shadow-md" />
+            {/* 深蓝色苹果 */}
+            <AppleIcon color="#1E40AF" className="w-full h-full drop-shadow-md" />
           </div>
         )}
 
@@ -335,14 +347,17 @@ export const CatchApplesGame: React.FC<GameComponentProps> = ({
           </div>
         )}
 
-        {/* 游戏说明覆盖层（淡出） */}
-        {!gameStarted && missedCount === 0 && !fallingApple && !gameOver && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-white pointer-events-none z-40 bg-black/20 p-6 rounded-3xl backdrop-blur-sm">
+        {/* 游戏说明覆盖层 */}
+        {showHint && !gameStarted && !gameOver && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-white pointer-events-none z-50 bg-black/60 p-6 rounded-3xl backdrop-blur-sm border-2 border-yellow-400/50 shadow-2xl">
             <p className="text-2xl font-black mb-2 drop-shadow-lg">移动红篮子</p>
-            <p className="font-bold drop-shadow-md">
-              接住掉落的 <span className="text-blue-200 text-xl">蓝苹果</span>
+            <p className="font-bold drop-shadow-md mb-3">
+              接住掉落的 <span className="text-blue-300 text-xl font-black">深蓝色苹果</span>
             </p>
-            <p className="text-sm mt-4 bg-white/30 px-3 py-1 rounded-full inline-block">重合时点击屏幕</p>
+            <p className="text-base mt-4 bg-yellow-400/95 text-gray-900 px-5 py-3 rounded-full inline-block font-bold border-2 border-yellow-300 shadow-lg">
+              ⚠️ 重要：当苹果与篮子重合时，点击篮子来接苹果！
+            </p>
+            <p className="text-sm mt-3 text-yellow-100 font-semibold">移动鼠标/手指控制篮子位置</p>
           </div>
         )}
       </div>

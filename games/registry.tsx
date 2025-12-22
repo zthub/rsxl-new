@@ -11,6 +11,7 @@ import { WhosHidingGame } from './stimulation/WhosHidingGame';
 import { WhackARabbit } from './stimulation/WhackARabbit';
 import { AnimalPuzzleGame } from './stimulation/AnimalPuzzleGame';
 import { GoldMinerGame } from './stimulation/GoldMinerGame';
+import { ParkingGame } from './stimulation/ParkingGame';
 import { FineMotorGame } from './fine-motor/FineMotorGame';
 import { TraceContourGame } from './fine-motor/TraceContourGame';
 import { MazeGame } from './fine-motor/MazeGame';
@@ -21,6 +22,7 @@ import { AnimalPopGame } from './fine-motor/AnimalPopGame';
 import { FindRedBeanGame } from './fine-motor/FindRedBeanGame';
 import { DefuseBombGridGame } from './fine-motor/DefuseBombGridGame';
 import { ProtectChicksGame } from './fine-motor/ProtectChicksGame';
+import { FindAvatarGame } from './fine-motor/FindAvatarGame';
 import { SimultaneousTetrisGame } from './simultaneous/SimultaneousTetrisGame';
 import { SnakeGame } from './simultaneous/SnakeGame';
 import { ColorMatchGame } from './simultaneous/ColorMatchGame';
@@ -46,6 +48,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g1-11': WhackARabbit,
     'g1-12': AnimalPuzzleGame,
     'g1-13': GoldMinerGame,
+    'g1-14': ParkingGame,
 
     // Fine Motor
     'g2-1': TraceContourGame, // 连点成画
@@ -58,6 +61,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g2-8': DefuseBombGridGame, // 拆炸弹（视觉精细版）
     'g2-9': ProtectChicksGame,  // 保护小鸡（视觉精细版）
     'g2-10': FindRedBeanGame,   // 找红豆（视觉精细版）
+    'g2-11': FindAvatarGame,    // 找朋友（视觉精细版）
 
     // Simultaneous
     'g3-1': SimultaneousTetrisGame,
