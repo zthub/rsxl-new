@@ -62,7 +62,7 @@ const GameResultModal: React.FC<Props> = ({ gameState, onRestart, onNextLevel, o
             className="w-full py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold text-lg flex items-center justify-center gap-2 mt-2"
           >
             <Home size={20} />
-            返回列表
+            返回主页
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameComponentProps } from '../../types';
 import { renderCommonBackground } from '../../utils/visualRendering';
-import GameResultModal from '../../external-games/components/GameResultModal';
+import GameResultModal from '../../components/GameResultModal';
 import { MoveHorizontal, MoveVertical } from 'lucide-react';
 
 interface Car {

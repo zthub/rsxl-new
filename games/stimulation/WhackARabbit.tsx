@@ -73,10 +73,10 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
         const rows = 2;
         const cols = 3;
         const marginX = width * 0.15;
-        // 动态计算顶部边距：根据屏幕高度百分比，但确保最小可用空间
+        // 动态计算顶部边距：根据屏幕高度百分比，增加顶部边距避免兔子被遮挡
         // 横屏模式下 height 较小，使用百分比更合适
-        const topMargin = height * 0.2; // 20% 顶部边距
-        const bottomMargin = height * 0.1; // 10% 底部边距
+        const topMargin = height * 0.35; // 35% 顶部边距（增加15%）
+        const bottomMargin = height * 0.15; // 15% 底部边距（增加5%）
         const marginY = topMargin;
         const availW = width - marginX * 2;
         const availH = height - marginY - bottomMargin;
@@ -167,7 +167,7 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
             
             // Hitbox area (above the hole)
             const hitBoxBottom = hole.y;
-            const hitBoxTop = hole.y - hole.width * 1.2; // Approx height of rabbit
+            const hitBoxTop = hole.y - hole.width * 0.9; // Match new pop height
             const hitBoxLeft = hole.x - hole.width / 2;
             const hitBoxRight = hole.x + hole.width / 2;
 
@@ -351,14 +351,15 @@ export const WhackARabbit: React.FC<GameComponentProps> = ({ width, height, isPl
 
             // Draw Entity
             if (hole.entityType !== 'EMPTY') {
-                const popHeight = rw * 1.2 * hole.animProgress;
+                // 调整弹出高度，确保兔子不会超出屏幕顶部
+                const popHeight = rw * 0.9 * hole.animProgress; // 从1.0降低到0.9，进一步减少弹出高度
                 
                 ctx.save();
                 // Clip region: Everything above the bottom edge of the hole
                 // Actually, standard clipping is hard for "behind the front rim but in front of back rim".
                 // Simple trick: Draw entity, then draw the front rim of the hole over it.
                 
-                const entityY = hy - popHeight + (rh * 0.2); // Start slightly inside
+                const entityY = hy - popHeight + (rh * 0.4); // Start more inside, lower position
                 
                 if (hole.entityType === 'RABBIT' || hole.entityType === 'GOLDEN_RABBIT') {
                     const isGolden = hole.entityType === 'GOLDEN_RABBIT';

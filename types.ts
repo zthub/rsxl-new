@@ -22,6 +22,14 @@ export enum ViewState {
   GAME_PLAY = 'GAME_PLAY',
 }
 
+export enum GameState {
+  IDLE = 'IDLE',
+  PLAYING = 'PLAYING',
+  WON = 'WON',
+  GAME_OVER = 'GAME_OVER',
+  PAUSED = 'PAUSED'
+}
+
 // Standard interface for all game components
 export interface GameComponentProps {
   width: number;
