@@ -237,43 +237,84 @@ export const NewTetrisGame: React.FC<GameComponentProps> = ({ width, height, isP
   // Calculate board size based on available space - ensure all columns visible on mobile
   const isLandscape = width > height;
   const isMobile = width <= 768;
+  const isTablet = width <= 1024 && width > 768;
   const aspectRatio = BOARD_WIDTH / BOARD_HEIGHT;
   
-  // Reserve space for header
-  const headerHeight = 80;
+  // 激进移动端适配：手机使用更多空间，确保所有10列完全可见
+  let widthPadding, heightPadding, headerHeight;
   
-  // 手机端使用更多空间，确保所有列都能显示
-  const widthPadding = isMobile ? 0.98 : 0.75;
-  const heightPadding = isMobile ? 0.85 : 0.75;
+  if (isMobile) {
+    // 手机端：最大化利用空间，确保10列完全显示
+    widthPadding = 0.99;
+    heightPadding = 0.95;
+    headerHeight = 50; // 减少头部空间
+  } else if (isTablet) {
+    // 平板端：适当增加空间
+    widthPadding = 0.96;
+    heightPadding = 0.90;
+    headerHeight = 70;
+  } else {
+    // 电脑端：保持原有空间分配
+    widthPadding = 0.75;
+    heightPadding = 0.75;
+    headerHeight = 80;
+  }
   
   const availableWidth = width * widthPadding;
   const availableHeight = height * heightPadding - headerHeight;
   
-  // Calculate maximum size - 优先保证宽度，确保所有10列都能显示
-  const maxWidthByHeight = availableHeight * aspectRatio;
-  const maxHeightByWidth = availableWidth / aspectRatio;
+  // 激进移动端适配策略：优先保证宽度，必要时调整宽高比
+  let boardWidth, boardHeight;
   
-  // 选择约束：手机端优先保证宽度
-  const boardWidth = isMobile 
-    ? Math.min(availableWidth, maxWidthByHeight) // 手机端：确保宽度足够显示所有列
-    : Math.min(availableWidth, maxWidthByHeight); // 电脑端：平衡显示
-  const boardHeight = boardWidth / aspectRatio;
+  // 平板横屏模式检测
+  const isTabletLandscape = isTablet && isLandscape;
+  
+  if (isMobile || isTabletLandscape) {
+    // 手机端和平板横屏模式：强制宽度优先，确保所有10列可见
+    boardWidth = availableWidth;
+    boardHeight = boardWidth / aspectRatio;
+    
+    // 如果高度超出，按可用高度重新计算
+    if (boardHeight > availableHeight) {
+      boardHeight = availableHeight;
+      boardWidth = boardHeight * aspectRatio;
+    }
+    
+    // 最终检查：确保宽度不超过可用宽度
+    boardWidth = Math.min(boardWidth, availableWidth);
+  } else if (isTablet) {
+    // 平板竖屏模式：平衡显示
+    const maxWidthByHeight = availableHeight * aspectRatio;
+    boardWidth = Math.min(availableWidth, maxWidthByHeight);
+    boardHeight = boardWidth / aspectRatio;
+  } else {
+    // 电脑端：标准计算
+    const maxWidthByHeight = availableHeight * aspectRatio;
+    boardWidth = Math.min(availableWidth, maxWidthByHeight);
+    boardHeight = boardWidth / aspectRatio;
+  }
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center p-2" style={{ backgroundColor: '#f0f4f8' }}>
+    <div className={`relative w-full h-full flex items-center justify-center ${
+      isMobile ? 'p-0.5' : (isTablet ? 'p-1' : 'p-2')
+    }`} style={{ backgroundColor: '#f0f4f8' }}>
       {/* Game Board Area */}
       <div
         ref={boardRef}
-        className="relative bg-white/90 backdrop-blur-md rounded-xl overflow-hidden shadow-inner touch-none border-4 border-indigo-200"
+        className={`relative bg-white/90 backdrop-blur-md overflow-hidden shadow-inner touch-none ${
+          isMobile ? 'border border-indigo-200 rounded-md' : 
+          isTablet ? 'border-2 border-indigo-200 rounded-lg' : 
+          'border-4 border-indigo-200 rounded-xl'
+        }`}
         style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${BOARD_WIDTH}, 1fr)`,
           gridTemplateRows: `repeat(${BOARD_HEIGHT}, 1fr)`,
           aspectRatio: `${BOARD_WIDTH}/${BOARD_HEIGHT}`,
-          width: `${boardWidth}px`,
-          height: `${boardHeight}px`,
-          maxWidth: '98vw',
-          maxHeight: '98vh',
+          // width: `${boardWidth}px`,
+          // height: `${boardHeight}px`,
+          maxWidth: isMobile ? '100vw' : (isTablet ? '99vw' : '98vw'),
+          maxHeight: isMobile ? '100vh' : (isTablet ? '99vh' : '98vh'),
         }}
         onPointerMove={(e) => {
             if(e.buttons > 0) handlePointerMove(e)

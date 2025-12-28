@@ -123,8 +123,10 @@ export const WatermelonGame: React.FC<GameComponentProps> = ({ width, height, is
 
         // 1. 检查是否点击了已有的装饰挂件
         for (const dec of decorationsRef.current) {
-            const size = dec.scale * 60; // 增大点击检测区域
-            if (Math.hypot(clientX - dec.x, clientY - dec.y) < size) {
+            // 使用实际的挂件大小作为检测区域，而不是固定的60像素
+            // 挂件的实际大小是 dec.scale * 25 (字体大小) 的一半作为半径
+            const actualSize = dec.scale * 25 * 0.6; // 0.6倍大小作为检测半径，提供一点容错
+            if (Math.hypot(clientX - dec.x, clientY - dec.y) < actualSize) {
                 // 记录点击的装饰ID和位置
                 clickDecorationRef.current = dec.id;
                 dragStartPosRef.current = { x: clientX, y: clientY };

@@ -12,6 +12,7 @@ import { WhackARabbit } from './stimulation/WhackARabbit';
 import { AnimalPuzzleGame } from './stimulation/AnimalPuzzleGame';
 import { GoldMinerGame } from './stimulation/GoldMinerGame';
 import { ParkingGame } from './stimulation/ParkingGame';
+import DrinkShopGame from './stimulation/DrinkShopGame';
 import { FineMotorGame } from './fine-motor/FineMotorGame';
 import { TraceContourGame } from './fine-motor/TraceContourGame';
 import { MazeGame } from './fine-motor/MazeGame';
@@ -49,6 +50,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g1-12': AnimalPuzzleGame,
     'g1-13': GoldMinerGame,
     'g1-14': ParkingGame,
+    'g1-15': DrinkShopGame,
 
     // Fine Motor
     'g2-1': TraceContourGame, // 连点成画

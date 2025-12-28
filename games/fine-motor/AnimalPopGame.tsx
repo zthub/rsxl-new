@@ -119,42 +119,84 @@ export const AnimalPopGame: React.FC<GameComponentProps> = ({ width, height, isP
   // Calculate board size based on available space - ensure all columns visible on mobile
   const isLandscape = width > height;
   const isMobile = width <= 768;
+  const isTablet = width <= 1024 && width > 768;
   const aspectRatio = BOARD_WIDTH / BOARD_HEIGHT;
   
-  // Reserve space for header and pending row
-  const headerHeight = 80;
-  const pendingRowHeight = 60;
+  // 激进移动端适配：手机使用更多空间，确保所有10列完全可见
+  let widthPadding, heightPadding, headerHeight, pendingRowHeight;
   
-  // 手机端使用更多空间，确保所有10列都能显示
-  const widthPadding = isMobile ? 0.98 : 0.75;
-  const heightPadding = isMobile ? 0.85 : 0.75;
+  if (isMobile) {
+    // 手机端：最大化利用空间，确保10列完全显示
+    widthPadding = 0.99;
+    heightPadding = 0.95;
+    headerHeight = 50; // 减少头部空间
+    pendingRowHeight = 30; // 减少待定行高度
+  } else if (isTablet) {
+    // 平板端：适当增加空间
+    widthPadding = 0.96;
+    heightPadding = 0.90;
+    headerHeight = 70;
+    pendingRowHeight = 50;
+  } else {
+    // 电脑端：保持原有空间分配
+    widthPadding = 0.75;
+    heightPadding = 0.75;
+    headerHeight = 80;
+    pendingRowHeight = 60;
+  }
   
   const availableHeight = height * heightPadding - headerHeight - pendingRowHeight;
   const availableWidth = width * widthPadding;
   
-  // Calculate maximum size - 优先保证宽度，确保所有10列都能显示
-  const maxWidthByHeight = availableHeight * aspectRatio;
-  const maxHeightByWidth = availableWidth / aspectRatio;
+  // 激进移动端适配策略：优先保证宽度，必要时调整宽高比
+  let boardWidth, boardHeight;
   
-  // 选择约束：优先保证宽度，确保所有列都能显示
-  const boardWidth = Math.min(availableWidth, maxWidthByHeight);
-  const boardHeight = boardWidth / aspectRatio;
+  if (isMobile) {
+    // 手机端：强制宽度优先，确保所有10列可见
+    boardWidth = availableWidth;
+    boardHeight = boardWidth / aspectRatio;
+    
+    // 如果高度超出，按可用高度重新计算
+    if (boardHeight > availableHeight) {
+      boardHeight = availableHeight;
+      boardWidth = boardHeight * aspectRatio;
+    }
+    
+    // 最终检查：确保宽度不超过可用宽度
+    boardWidth = Math.min(boardWidth, availableWidth);
+  } else if (isTablet) {
+    // 平板端：平衡显示
+    const maxWidthByHeight = availableHeight * aspectRatio;
+    boardWidth = Math.min(availableWidth, maxWidthByHeight);
+    boardHeight = boardWidth / aspectRatio;
+  } else {
+    // 电脑端：标准计算
+    const maxWidthByHeight = availableHeight * aspectRatio;
+    boardWidth = Math.min(availableWidth, maxWidthByHeight);
+    boardHeight = boardWidth / aspectRatio;
+  }
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-2" style={{ backgroundColor: '#f0f4f8' }}>
+    <div className={`relative w-full h-full flex flex-col items-center justify-center ${
+      isMobile ? 'p-0.5' : (isTablet ? 'p-1' : 'p-2')
+    }`} style={{ backgroundColor: '#f0f4f8' }}>
       {/* Game Board Container */}
       <div className="flex flex-col items-center justify-center relative w-full">
         <div 
-            className="relative bg-white/50 backdrop-blur-md rounded-t-xl overflow-hidden shadow-inner touch-none border-x-4 border-t-4 border-indigo-200"
+            className={`relative bg-white/50 backdrop-blur-md overflow-hidden shadow-inner touch-none ${
+              isMobile ? 'border-x border-t border-indigo-200 rounded-t-md' : 
+              isTablet ? 'border-x-2 border-t-2 border-indigo-200 rounded-t-lg' : 
+              'border-x-4 border-t-4 border-indigo-200 rounded-t-xl'
+            }`}
             style={{
                 display: 'grid',
                 gridTemplateColumns: `repeat(${BOARD_WIDTH}, 1fr)`,
                 gridTemplateRows: `repeat(${BOARD_HEIGHT}, 1fr)`,
                 aspectRatio: `${BOARD_WIDTH}/${BOARD_HEIGHT}`,
-                width: `${boardWidth}px`,
-                height: `${boardHeight}px`,
-                maxWidth: '98vw',
-                maxHeight: '98vh',
+                // width: `${boardWidth}px`,
+                // height: `${boardHeight}px`,
+                maxWidth: isMobile ? '100vw' : (isTablet ? '99vw' : '98vw'),
+                maxHeight: isMobile ? '100vh' : (isTablet ? '99vh' : '98vh'),
             }}
         >
             {grid.map((row, y) =>
@@ -190,9 +232,10 @@ export const AnimalPopGame: React.FC<GameComponentProps> = ({ width, height, isP
         </div>
 
         {/* Pending Row Indicator */}
-        <div className="bg-indigo-50/50 rounded-b-lg p-1 border-x-4 border-b-4 border-indigo-200 flex h-12 shadow-inner" style={{ width: `${boardWidth}px`, maxWidth: '98vw' }}>
+        <div className="bg-indigo-50/50 rounded-b-lg p-1 border-x-4 border-b-4 border-indigo-200 flex h-12 shadow-inner" /*style={{ width: `${boardWidth}px`, maxWidth: '98vw' }}*/>
             {pendingBlocks.map((block, i) => (
                 <div key={`pending-${i}`} className="flex-1 p-[1px]">
+                  
                      <TetrisBlock color={block?.color} emoji={block?.emoji} grayscale={true} />
                 </div>
             ))}
