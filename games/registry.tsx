@@ -24,6 +24,7 @@ import { FindRedBeanGame } from './fine-motor/FindRedBeanGame';
 import { DefuseBombGridGame } from './fine-motor/DefuseBombGridGame';
 import { ProtectChicksGame } from './fine-motor/ProtectChicksGame';
 import { FindAvatarGame } from './fine-motor/FindAvatarGame';
+import { FruitPrecisionGame } from './fine-motor/FruitPrecisionGame';
 import { SimultaneousTetrisGame } from './simultaneous/SimultaneousTetrisGame';
 import { SnakeGame } from './simultaneous/SnakeGame';
 import { ColorMatchGame } from './simultaneous/ColorMatchGame';
@@ -54,7 +55,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
 
     // Fine Motor
     'g2-1': TraceContourGame, // 连点成画
-    'g2-2': FineMotorGame, 
+    'g2-2': FineMotorGame,
     'g2-3': MazeGame,         // 迷宫探险
     'g2-4': HexagonGame,
     'g2-5': TetrisGame,
@@ -64,6 +65,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g2-9': ProtectChicksGame,  // 保护小鸡（视觉精细版）
     'g2-10': FindRedBeanGame,   // 找红豆（视觉精细版）
     'g2-11': FindAvatarGame,    // 找朋友（视觉精细版）
+    'g2-12': FruitPrecisionGame, // 水果精细家（视觉精细版）
 
     // Simultaneous
     'g3-1': SimultaneousTetrisGame,

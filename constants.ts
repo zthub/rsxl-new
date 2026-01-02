@@ -34,7 +34,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
     iconName: 'MousePointer2',
     games: [
       { id: 'g2-1', title: '连点成画', description: '按顺序连接数字点，描绘出可爱动物', difficulty: 'Easy' },
-      { id: 'g2-2', title: '精准点击', description: '点击屏幕上出现的微小目标', difficulty: 'Medium' },
+
       { id: 'g2-3', title: '迷宫探险', description: '走出随机生成的复杂迷宫', difficulty: 'Hard' },
       { id: 'g2-4', title: '六角消消乐', description: '拖动钻石填满六边形网格消除', difficulty: 'Medium' },
       { id: 'g2-5', title: '传统俄罗斯方块', description: '经典消除游戏，锻炼手眼协调', difficulty: 'Medium' },
@@ -44,6 +44,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g2-9', title: '保护小鸡', description: '快速找出老鹰，避免误点到小鸡', difficulty: 'Medium' },
       { id: 'g2-10', title: '找红豆', description: '在一堆相似小豆中精准找出红豆', difficulty: 'Medium' },
       { id: 'g2-11', title: '找朋友', description: '在一群小朋友中找到和上面完全一样的那一个！', difficulty: 'Medium' },
+      { id: 'g2-12', title: '水果精细家', description: '【精细训练】在密密麻麻的小水果中，数数雪梨有几个？', difficulty: 'Medium' },
     ]
   },
   {
