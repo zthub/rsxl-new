@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameComponentProps } from '../../types';
 import { AvocadoIcon, PearIcon } from './components/FruitPrecisionAssets';
-import { Trophy, RefreshCcw, Eye } from 'lucide-react';
+import { Trophy, RefreshCcw, Eye, Check } from 'lucide-react';
 import { playSound } from '../../utils/gameUtils';
 import { renderCommonBackground } from '../../utils/visualRendering';
 
@@ -23,6 +23,8 @@ export const FruitPrecisionGame: React.FC<GameComponentProps> = ({
     const [dimensions, setDimensions] = useState({ rows: 0, cols: 40 }); // 初始列数设为40，使水果变小
     const [showVictory, setShowVictory] = useState(false);
     const [victoryMessage, setVictoryMessage] = useState('');
+
+    const [markedIndices, setMarkedIndices] = useState<Set<number>>(new Set());
 
     // Canvas / Background Refs
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -120,6 +122,7 @@ export const FruitPrecisionGame: React.FC<GameComponentProps> = ({
         indices.forEach(idx => newGrid[idx] = true);
 
         setGrid(newGrid);
+        setMarkedIndices(new Set()); // Clear marks for new level
 
         const opts = new Set<number>();
         opts.add(count);
@@ -161,6 +164,19 @@ export const FruitPrecisionGame: React.FC<GameComponentProps> = ({
             // 不结束游戏，只是提示错误或扣分
             onScore(-5);
         }
+    };
+
+    const toggleMark = (index: number) => {
+        if (!isPlaying || showVictory) return;
+        setMarkedIndices(prev => {
+            const next = new Set(prev);
+            if (next.has(index)) {
+                next.delete(index);
+            } else {
+                next.add(index);
+            }
+            return next;
+        });
     };
 
     return (
@@ -216,15 +232,30 @@ export const FruitPrecisionGame: React.FC<GameComponentProps> = ({
                                 gridTemplateRows: `repeat(${dimensions.rows}, 1fr)`,
                             }}
                         >
-                            {grid.map((isTarget, i) => (
-                                <div key={i} className="flex items-center justify-center w-full h-full p-[1px]">
-                                    {targetType === 'pear' ? (
-                                        isTarget ? <PearIcon className="w-full h-full drop-shadow-sm" /> : <AvocadoIcon className="w-full h-full" />
-                                    ) : (
-                                        isTarget ? <AvocadoIcon className="w-full h-full drop-shadow-sm" /> : <PearIcon className="w-full h-full" />
-                                    )}
-                                </div>
-                            ))}
+                            {grid.map((isTarget, i) => {
+                                const isMarked = markedIndices.has(i);
+                                return (
+                                    <div
+                                        key={i}
+                                        onClick={() => toggleMark(i)}
+                                        className={`relative flex items-center justify-center w-full h-full p-[1px] cursor-pointer transition-all ${isMarked ? '' : 'hover:scale-110'}`}
+                                    >
+                                        {targetType === 'pear' ? (
+                                            isTarget ? <PearIcon className="w-full h-full drop-shadow-sm" /> : <AvocadoIcon className="w-full h-full" />
+                                        ) : (
+                                            isTarget ? <AvocadoIcon className="w-full h-full drop-shadow-sm" /> : <PearIcon className="w-full h-full" />
+                                        )}
+                                        {isMarked && (
+                                            <>
+                                                <div className="absolute inset-0 m-0.5 border-[3px] border-red-500 rounded-full pointer-events-none shadow-sm" />
+                                                <div className="absolute bottom-0 right-0 pointer-events-none translate-x-[10%] translate-y-[10%]">
+                                                    <Check className="w-5 h-5 text-green-600 drop-shadow-md stroke-[5]" />
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
