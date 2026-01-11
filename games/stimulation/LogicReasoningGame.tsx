@@ -61,73 +61,88 @@ export const LogicReasoningGame: React.FC<GameComponentProps> = ({ width, height
         onScore(score);
     };
 
+    const audioUnlocked = useRef(false);
+
+    useEffect(() => {
+        const unlock = () => {
+            if (audioUnlocked.current) return;
+            try {
+                if (!('speechSynthesis' in window)) return;
+                window.speechSynthesis.cancel();
+                const u = new SpeechSynthesisUtterance('');
+                u.volume = 0;
+                window.speechSynthesis.speak(u);
+                audioUnlocked.current = true;
+                window.removeEventListener('touchstart', unlock);
+                window.removeEventListener('mousedown', unlock);
+            } catch (e) { }
+        };
+        window.addEventListener('touchstart', unlock, { passive: true });
+        window.addEventListener('mousedown', unlock);
+        return () => {
+            window.removeEventListener('touchstart', unlock);
+            window.removeEventListener('mousedown', unlock);
+        };
+    }, []);
+
     return (
-        <div className="relative w-full h-full overflow-hidden select-none flex flex-col items-center justify-center">
+        <div className="relative w-full h-[100dvh] overflow-hidden select-none flex flex-col items-center justify-start bg-slate-100">
             {/* Background Layer */}
             <canvas
                 ref={canvasRef}
                 className="absolute inset-0 pointer-events-none z-0"
             />
 
-            {/* Game UI Layer - Centered Container */}
-            <div className="relative z-10 flex flex-col items-center justify-center w-full h-full max-h-screen lg:max-h-[85vh]">
-
-                {/* Header / Mode Switcher - Fixed at top of relative container or floating */}
-                <div className="mb-2 lg:mb-8 flex items-center gap-2 lg:gap-4 bg-white/40 backdrop-blur-xl p-1 lg:p-2 rounded-3xl shadow-2xl border border-white/40 animate-in slide-in-from-top-4 duration-500 scale-[0.8] lg:scale-100 mt-1 lg:mt-0">
-                    <div className="flex p-0.5 lg:p-1 bg-slate-400/20 rounded-2xl">
-                        <button
-                            onClick={() => setMode('placement')}
-                            className={`px-4 lg:px-6 py-1.5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-all duration-300 ${mode === 'placement' ? 'bg-orange-500 text-white shadow-lg scale-105' : 'text-slate-700 hover:bg-white/40'
-                                }`}
-                        >
-                            柜子摆放
-                        </button>
-                        <button
-                            onClick={() => setMode('deduction')}
-                            className={`px-4 lg:px-6 py-1.5 lg:py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-all duration-300 ${mode === 'deduction' ? 'bg-blue-500 text-white shadow-lg scale-105' : 'text-slate-700 hover:bg-white/40'
-                                }`}
-                        >
-                            语音推理
-                        </button>
-                    </div>
-
-                    <div className="h-5 lg:h-6 w-[1px] bg-slate-400/30 mx-1"></div>
-
-                    <div className="flex gap-1.5 lg:gap-2">
-                        {(['Easy', 'Medium', 'Hard'] as const).map((d) => (
-                            <button
-                                key={d}
-                                onClick={() => setDifficulty(d)}
-                                className={`px-2.5 lg:px-4 py-1.5 lg:py-2 rounded-xl text-[10px] lg:text-xs font-extrabold transition-all duration-300 ${difficulty === d
-                                    ? 'bg-brand-blue text-white shadow-md scale-105'
-                                    : 'bg-white/40 text-slate-700 hover:bg-white/60'
-                                    }`}
-                            >
-                                {d === 'Easy' ? '简单' : d === 'Medium' ? '中级' : '高级'}
-                            </button>
-                        ))}
-                    </div>
+            {/* Block 1: Floating Header Menu - Compact, no background bar */}
+            <div className="flex-shrink-0 flex flex-wrap items-center justify-center gap-2 lg:gap-4 mt-2 lg:mt-4 z-20 scrollbar-hide">
+                <div className="flex bg-white/40 backdrop-blur-xl rounded-2xl p-1 shadow-xl border border-white/40">
+                    <button
+                        onClick={() => setMode('placement')}
+                        className={`px-3 lg:px-6 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-bold transition-all ${mode === 'placement' ? 'bg-orange-500 text-white shadow-lg scale-105' : 'text-slate-700 hover:bg-white/40'}`}
+                    >
+                        柜子摆放
+                    </button>
+                    <button
+                        onClick={() => setMode('deduction')}
+                        className={`px-3 lg:px-6 py-1.5 lg:py-2 rounded-xl text-xs lg:text-sm font-bold transition-all ${mode === 'deduction' ? 'bg-blue-500 text-white shadow-lg scale-105' : 'text-slate-700 hover:bg-white/40'}`}
+                    >
+                        语音推理
+                    </button>
                 </div>
 
-                {/* Sub Game Container - Centered */}
-                <div className="flex-1 w-full flex items-center justify-center overflow-visible relative">
-                    {mode === 'placement' ? (
-                        <PlacementSubGame
-                            key={`placement-${difficulty}`}
-                            difficulty={difficulty}
-                            onComplete={handleLevelComplete}
-                        />
-                    ) : (
-                        <DeductionSubGame
-                            key={`deduction-${difficulty}`}
-                            difficulty={difficulty}
-                            onComplete={handleLevelComplete}
-                        />
-                    )}
+                <div className="flex bg-white/40 backdrop-blur-xl rounded-2xl p-1 shadow-xl border border-white/40 gap-1">
+                    {(['Easy', 'Medium', 'Hard'] as const).map((d) => (
+                        <button
+                            key={d}
+                            onClick={() => setDifficulty(d)}
+                            className={`px-3 py-1.5 lg:py-2 rounded-xl text-[10px] lg:text-xs font-black transition-all ${difficulty === d ? 'bg-brand-blue text-white shadow-md scale-105' : 'text-slate-600 hover:bg-white/40'}`}
+                        >
+                            {d === 'Easy' ? '简单' : d === 'Medium' ? '中级' : '高级'}
+                        </button>
+                    ))}
                 </div>
             </div>
 
+            {/* Block 2 & 3: Sub Game Area (Fluid) */}
+            <div id="sub-game-container" className="flex-1 w-full relative overflow-y-auto overflow-x-hidden flex flex-col items-center">
+                {mode === 'placement' ? (
+                    <PlacementSubGame
+                        key={`placement-${difficulty}`}
+                        difficulty={difficulty}
+                        onComplete={handleLevelComplete}
+                    />
+                ) : (
+                    <DeductionSubGame
+                        key={`deduction-${difficulty}`}
+                        difficulty={difficulty}
+                        onComplete={handleLevelComplete}
+                    />
+                )}
+            </div>
+
             <style>{`
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
                 @keyframes zoom-in-50 {
                     from { opacity: 0; transform: scale(0.5); }
                     to { opacity: 1; transform: scale(1); }
@@ -140,7 +155,13 @@ export const LogicReasoningGame: React.FC<GameComponentProps> = ({ width, height
                 .zoom-in-50 {
                     animation-name: zoom-in-50;
                 }
+                body {
+                    overscroll-behavior: none;
+                    touch-action: pan-x pan-y;
+                }
             `}</style>
+            {/* Version Tag */}
+            <div className="absolute bottom-1 right-1 text-[8px] text-slate-400 select-none pointer-events-none">v22</div>
         </div>
     );
 };
