@@ -21,6 +21,7 @@ export const TRAINING_MODULES: TrainingModule[] = [
       { id: 'g1-13', title: '欢乐矿工', description: '看准时机，抓取星星和宝藏！', difficulty: 'Medium' },
       { id: 'g1-14', title: '快乐停车场', description: '移动车辆为红色小车让路，从右侧出口开出！', difficulty: 'Medium' },
       { id: 'g1-15', title: '色彩饮品店', description: '将相同颜色的饮料倒在一起，满足顾客点单需求', difficulty: 'Medium' },
+      { id: 'g1-16', title: '逻辑推理', description: '包含物品位置摆放与语音逻辑推理，锻炼大脑思维', difficulty: 'Medium' },
       // 强闪永远放在视觉刺激模块的最后
       { id: 'g1-4', title: '强闪刺激', description: '整屏在红黄蓝黑白之间快速闪烁，可根据视力自动调频并手动微调速率', difficulty: 'Medium' },
     ]

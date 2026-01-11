@@ -12,7 +12,7 @@ const getAudioContext = (): AudioContext | null => {
     try {
         const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return null;
-        
+
         // 如果已有实例且状态正常，直接返回
         if (audioContextInstance && audioContextInstance.state !== 'closed') {
             // 如果被暂停，尝试恢复
@@ -24,7 +24,7 @@ const getAudioContext = (): AudioContext | null => {
             }
             return audioContextInstance;
         }
-        
+
         // 创建新实例
         audioContextInstance = new AudioContext();
         return audioContextInstance;
@@ -38,13 +38,13 @@ export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
     try {
         const ctx = getAudioContext();
         if (!ctx) return;
-        
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        
+
         osc.connect(gain);
         gain.connect(ctx.destination);
-        
+
         const now = ctx.currentTime;
 
         if (type === 'correct') {
@@ -58,11 +58,11 @@ export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
             osc.start(now);
             osc.stop(now + 0.3);
         } else if (type === 'wrong') {
-            // 错误提示音 (三角波，低沉，柔和) - 增大音量使其更明显
+            // 错误提示音 (三角波，低沉，柔和)
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(150, now);
             osc.frequency.linearRampToValueAtTime(100, now + 0.2);
-            gain.gain.setValueAtTime(0.25, now); // 从0.08增加到0.25，使声音更明显
+            gain.gain.setValueAtTime(0.25, now);
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
             osc.start(now);
             osc.stop(now + 0.2);
@@ -77,10 +77,10 @@ export const playSound = (type: 'correct' | 'wrong' | 'shoot') => {
             osc.stop(now + 0.1);
         }
     } catch (e) {
-        // 忽略音频上下文错误
         console.warn('playSound error:', e);
     }
 };
+
 
 // --- 简单旋律播放器 ---
 export const playNote = (frequency: number, duration: number, startTime: number = 0, type: 'sine' | 'square' | 'triangle' = 'sine') => {
@@ -90,25 +90,25 @@ export const playNote = (frequency: number, duration: number, startTime: number 
         // 注意：实际应用中应该重用 AudioContext，这里简化处理
         // 为了避免频繁创建 Context 导致警告，在游戏中应由外部传入 Context，或者使用单例
         // 这里仅作兼容，建议组件内部创建 Context
-        const ctx = new AudioContext(); 
+        const ctx = new AudioContext();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        
+
         osc.type = type;
         osc.frequency.value = frequency;
-        
+
         osc.connect(gain);
         gain.connect(ctx.destination);
-        
+
         const now = ctx.currentTime + startTime;
         gain.gain.setValueAtTime(0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        
+
         osc.start(now);
         osc.stop(now + duration);
-        
+
         return ctx; // 返回 ctx 以便外部关闭
-    } catch(e) { console.log(e) }
+    } catch (e) { console.log(e) }
 };
 
 // --- 找不同游戏数据 ---
@@ -117,7 +117,7 @@ export const ODD_ONE_PAIRS = {
     // 等级 1: 细微差别 (简单模式)
     level1: [
         ['😀', '😃'], ['🔒', '🔓'], ['👀', '👁️'], ['🍕', '🧀'],
-        ['🚌', '🚐'], ['🧡', '💛'], ['🥛', '🧃'], ['🌹', '🌷'], 
+        ['🚌', '🚐'], ['🧡', '💛'], ['🥛', '🧃'], ['🌹', '🌷'],
         ['🍎', '🍏'], ['🚲', '🛴'], ['🏠', '🏡'], ['🌛', '🌜'],
         ['👨', '👱'], ['🐱', '🐈'], ['🐶', '🐕'], ['🚗', '🚕'],
         ['⚽', '🏀'], ['🍺', '🍻'], ['🌧️', '🌦️'], ['❄️', '☃️'],
@@ -134,7 +134,7 @@ export const ODD_ONE_PAIRS = {
     ],
     // 等级 3: 专家级/像素级找茬 (困难模式)
     level3: [
-        ['🕐', '🕑'], ['🕓', '🕒'], ['📅', '📆'], ['📎', '🖇️'], 
+        ['🕐', '🕑'], ['🕓', '🕒'], ['📅', '📆'], ['📎', '🖇️'],
         ['✅', '❎'], ['☮️', '☯️'], ['⭕', '⭕️'], ['⬛', '◼️'],
         ['➖', '➗'], ['❔', '❓'], ['🇨🇳', '🇨🇭'], ['🔙', '🔚'],
         ['⬆️', '↗️'], ['♎', '♍'], ['♈', '♉'], ['♋', '♌'],

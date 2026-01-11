@@ -10,6 +10,7 @@ import { ThunderFighter } from './stimulation/ThunderFighter';
 import { WhosHidingGame } from './stimulation/WhosHidingGame';
 import { WhackARabbit } from './stimulation/WhackARabbit';
 import { AnimalPuzzleGame } from './stimulation/AnimalPuzzleGame';
+import { LogicReasoningGame } from './stimulation/LogicReasoningGame';
 import { GoldMinerGame } from './stimulation/GoldMinerGame';
 import { ParkingGame } from './stimulation/ParkingGame';
 import DrinkShopGame from './stimulation/DrinkShopGame';
@@ -52,6 +53,7 @@ export const GameRegistry: Record<string, React.FC<GameComponentProps>> = {
     'g1-13': GoldMinerGame,
     'g1-14': ParkingGame,
     'g1-15': DrinkShopGame,
+    'g1-16': LogicReasoningGame,
 
     // Fine Motor
     'g2-1': TraceContourGame, // 连点成画
