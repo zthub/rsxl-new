@@ -26,9 +26,9 @@ const GRID_SIZE = 6;
 const EXIT_ROW = 2;
 
 /**
- * 关卡数据集 - 精选 15 个关卡
- * 1-14 关保持原样（基础关卡）
- * 第 15 关（Index 14）为修复后的无重叠可解关卡
+ * 关卡数据集 - 精选 21 个关卡
+ * 每个关卡确保：不重叠、不出界、有解
+ * 第21关为超高难度终极挑战
  */
 const LEVELS: Car[][] = [
   // 1-12 关
@@ -109,25 +109,33 @@ const LEVELS: Car[][] = [
     { id: 3, x: 4, y: 0, length: 3, orientation: 'v', color: '#F59E0B' },
     { id: 4, x: 2, y: 0, length: 2, orientation: 'h', color: '#8B5CF6' },
     { id: 5, x: 2, y: 4, length: 3, orientation: 'h', color: '#EC4899' },
-    { id: 6, x: 0, y: 4, length: 2, orientation: 'v', color: '#F97316' }, 
+    { id: 6, x: 0, y: 4, length: 2, orientation: 'v', color: '#F97316' },
     { id: 7, x: 5, y: 2, length: 3, orientation: 'v', color: '#06B6D4' },
   ],
+  // 第11关 - 高难度：多层阻挡，需要精密规划
   [
-    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
-    { id: 1, x: 2, y: 0, length: 3, orientation: 'v', color: '#3B82F6' },
-    { id: 2, x: 3, y: 0, length: 3, orientation: 'v', color: '#10B981' },
-    { id: 3, x: 4, y: 0, length: 2, orientation: 'v', color: '#F59E0B' },
-    { id: 4, x: 5, y: 0, length: 3, orientation: 'v', color: '#8B5CF6' },
+    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },  // 目标红车
+    { id: 1, x: 2, y: 1, length: 2, orientation: 'v', color: '#3B82F6' },                 // 直接阻挡红车
+    { id: 2, x: 3, y: 0, length: 3, orientation: 'v', color: '#10B981' },                 // 右侧竖车
+    { id: 3, x: 4, y: 1, length: 3, orientation: 'v', color: '#F59E0B' },                 // 阻挡id:2
+    { id: 4, x: 5, y: 2, length: 3, orientation: 'v', color: '#8B5CF6' },                 // 右下角竖车
+    { id: 5, x: 0, y: 0, length: 2, orientation: 'h', color: '#EC4899' },                 // 左上横车
+    { id: 6, x: 0, y: 4, length: 3, orientation: 'h', color: '#F97316' },                 // 左下横车
+    { id: 7, x: 2, y: 5, length: 3, orientation: 'h', color: '#06B6D4' },                 // 底部横车
+    { id: 8, x: 2, y: 3, length: 2, orientation: 'h', color: '#14B8A6' },                 // 中间横车，阻挡id:1下移
   ],
+  // 第12关 - 高难度：连锁阻挡，需要长链条解谜
   [
-    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
-    { id: 1, x: 2, y: 1, length: 2, orientation: 'v', color: '#3B82F6' },
-    { id: 2, x: 3, y: 1, length: 3, orientation: 'v', color: '#10B981' },
-    { id: 3, x: 4, y: 1, length: 2, orientation: 'v', color: '#F59E0B' },
-    { id: 4, x: 0, y: 0, length: 2, orientation: 'h', color: '#8B5CF6' },
-    { id: 5, x: 2, y: 0, length: 3, orientation: 'h', color: '#EC4899' },
-    { id: 6, x: 1, y: 4, length: 2, orientation: 'h', color: '#F97316' },
-    { id: 7, x: 5, y: 4, length: 2, orientation: 'v', color: '#06B6D4' },
+    { id: 0, x: 1, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },  // 目标红车
+    { id: 1, x: 3, y: 1, length: 2, orientation: 'v', color: '#3B82F6' },                 // 直接阻挡红车
+    { id: 2, x: 4, y: 0, length: 3, orientation: 'v', color: '#10B981' },                 // 阻挡id:1右移
+    { id: 3, x: 5, y: 1, length: 3, orientation: 'v', color: '#F59E0B' },                 // 右侧竖车
+    { id: 4, x: 0, y: 0, length: 2, orientation: 'v', color: '#8B5CF6' },                 // 左上竖车
+    { id: 5, x: 1, y: 0, length: 2, orientation: 'h', color: '#EC4899' },                 // 上方横车，阻挡id:1
+    { id: 6, x: 0, y: 3, length: 2, orientation: 'v', color: '#F97316' },                 // 左侧竖车
+    { id: 7, x: 1, y: 4, length: 3, orientation: 'h', color: '#06B6D4' },                 // 中下横车
+    { id: 8, x: 2, y: 5, length: 3, orientation: 'h', color: '#14B8A6' },                 // 底部横车
+    { id: 9, x: 3, y: 3, length: 2, orientation: 'h', color: '#6366F1' },                 // 中间横车，阻挡id:1下移
   ],
   // 关卡 13 (Index 12)
   [
@@ -155,23 +163,102 @@ const LEVELS: Car[][] = [
     { id: 7, x: 0, y: 5, length: 3, orientation: 'h', color: '#14B8A6' },
     { id: 8, x: 3, y: 4, length: 2, orientation: 'h', color: '#6366F1' },
   ],
-  // 第 15 关 (Index 14) - 已修复的无重叠布局，绝对可解
+  // 第 15 关 - 高难度：精密布局
+  [
+    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
+    { id: 1, x: 2, y: 1, length: 2, orientation: 'v', color: '#3B82F6' },
+    { id: 2, x: 3, y: 0, length: 2, orientation: 'v', color: '#10B981' },
+    { id: 3, x: 4, y: 1, length: 3, orientation: 'v', color: '#F59E0B' },
+    { id: 4, x: 5, y: 3, length: 2, orientation: 'v', color: '#8B5CF6' },
+    { id: 5, x: 0, y: 0, length: 2, orientation: 'h', color: '#EC4899' },
+    { id: 6, x: 0, y: 4, length: 2, orientation: 'v', color: '#F97316' },
+    { id: 7, x: 1, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },
+    { id: 8, x: 2, y: 3, length: 2, orientation: 'h', color: '#14B8A6' },
+    { id: 9, x: 3, y: 5, length: 2, orientation: 'h', color: '#6366F1' },
+  ],
+  // 第 16 关
   [
     { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
     { id: 1, x: 2, y: 0, length: 2, orientation: 'v', color: '#3B82F6' },
-    { id: 2, x: 2, y: 3, length: 2, orientation: 'v', color: '#10B981' },
-    { id: 3, x: 3, y: 1, length: 2, orientation: 'v', color: '#F59E0B' },
-    { id: 4, x: 3, y: 4, length: 2, orientation: 'v', color: '#8B5CF6' },
-    { id: 5, x: 4, y: 2, length: 2, orientation: 'v', color: '#EC4899' },
-    { id: 6, x: 5, y: 0, length: 2, orientation: 'v', color: '#F97316' },
-    { id: 7, x: 0, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },
-    { id: 8, x: 0, y: 5, length: 2, orientation: 'h', color: '#14B8A6' },
+    { id: 2, x: 3, y: 1, length: 2, orientation: 'v', color: '#10B981' },
+    { id: 3, x: 4, y: 0, length: 3, orientation: 'v', color: '#F59E0B' },
+    { id: 4, x: 5, y: 2, length: 2, orientation: 'v', color: '#8B5CF6' },
+    { id: 5, x: 0, y: 0, length: 2, orientation: 'h', color: '#EC4899' },
+    { id: 6, x: 0, y: 4, length: 2, orientation: 'h', color: '#F97316' },
+    { id: 7, x: 2, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },
+    { id: 8, x: 3, y: 5, length: 2, orientation: 'h', color: '#14B8A6' },
+  ],
+  // 第 17 关 - 高难度：连锁移动
+  [
+    { id: 0, x: 1, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
+    { id: 1, x: 0, y: 0, length: 2, orientation: 'v', color: '#3B82F6' },
+    { id: 2, x: 3, y: 1, length: 2, orientation: 'v', color: '#10B981' },
+    { id: 3, x: 4, y: 0, length: 3, orientation: 'v', color: '#F59E0B' },
+    { id: 4, x: 5, y: 2, length: 3, orientation: 'v', color: '#8B5CF6' },
+    { id: 5, x: 1, y: 0, length: 2, orientation: 'h', color: '#EC4899' },
+    { id: 6, x: 0, y: 3, length: 3, orientation: 'h', color: '#F97316' },
+    { id: 7, x: 1, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },
+    { id: 8, x: 3, y: 4, length: 2, orientation: 'h', color: '#14B8A6' },
+    { id: 9, x: 2, y: 5, length: 3, orientation: 'h', color: '#6366F1' },
+  ],
+  // 第 18 关
+  [
+    { id: 0, x: 1, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
+    { id: 1, x: 0, y: 0, length: 2, orientation: 'v', color: '#3B82F6' },
+    { id: 2, x: 1, y: 0, length: 3, orientation: 'h', color: '#10B981' },
+    { id: 3, x: 4, y: 0, length: 2, orientation: 'v', color: '#F59E0B' },
+    { id: 4, x: 5, y: 1, length: 2, orientation: 'v', color: '#8B5CF6' },
+    { id: 5, x: 3, y: 1, length: 2, orientation: 'v', color: '#EC4899' },
+    { id: 6, x: 0, y: 3, length: 2, orientation: 'v', color: '#F97316' },
+    { id: 7, x: 1, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },
+    { id: 8, x: 3, y: 3, length: 3, orientation: 'h', color: '#14B8A6' },
+    { id: 9, x: 2, y: 5, length: 3, orientation: 'h', color: '#6366F1' },
+  ],
+  // 第 19 关 - 高难度：真正的挑战
+  [
+    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
+    { id: 1, x: 2, y: 1, length: 2, orientation: 'v', color: '#3B82F6' },
+    { id: 2, x: 3, y: 0, length: 2, orientation: 'v', color: '#10B981' },
+    { id: 3, x: 4, y: 1, length: 2, orientation: 'v', color: '#F59E0B' },
+    { id: 4, x: 5, y: 0, length: 3, orientation: 'v', color: '#8B5CF6' },
+    { id: 5, x: 0, y: 0, length: 2, orientation: 'h', color: '#EC4899' },
+    { id: 6, x: 0, y: 3, length: 2, orientation: 'v', color: '#F97316' },
+    { id: 7, x: 2, y: 3, length: 2, orientation: 'h', color: '#06B6D4' },
+    { id: 8, x: 1, y: 4, length: 2, orientation: 'h', color: '#14B8A6' },
+    { id: 9, x: 3, y: 5, length: 3, orientation: 'h', color: '#6366F1' },
+  ],
+  // 第 20 关 - 终极挑战：最难关卡
+  [
+    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },
+    { id: 1, x: 2, y: 0, length: 2, orientation: 'v', color: '#3B82F6' },
+    { id: 2, x: 3, y: 1, length: 2, orientation: 'v', color: '#10B981' },
+    { id: 3, x: 4, y: 0, length: 3, orientation: 'v', color: '#F59E0B' },
+    { id: 4, x: 5, y: 2, length: 2, orientation: 'v', color: '#8B5CF6' },
+    { id: 5, x: 0, y: 0, length: 2, orientation: 'h', color: '#EC4899' },
+    { id: 6, x: 0, y: 3, length: 2, orientation: 'v', color: '#F97316' },
+    { id: 7, x: 1, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },
+    { id: 8, x: 3, y: 4, length: 2, orientation: 'h', color: '#14B8A6' },
+    { id: 9, x: 2, y: 5, length: 2, orientation: 'h', color: '#6366F1' },
+    { id: 10, x: 4, y: 5, length: 2, orientation: 'h', color: '#F472B6' },
+  ],
+  // 第 21 关 - 终极挑战
+  [
+    { id: 0, x: 0, y: 2, length: 2, orientation: 'h', color: '#EF4444', isTarget: true },  // 红车 (0-1, 2)
+    { id: 1, x: 2, y: 0, length: 2, orientation: 'v', color: '#3B82F6' },                 // 蓝车 (2, 0-1)
+    { id: 2, x: 3, y: 1, length: 2, orientation: 'v', color: '#10B981' },                 // 绿车 (3, 1-2)
+    { id: 3, x: 4, y: 0, length: 3, orientation: 'v', color: '#F59E0B' },                 // 橙车 (4, 0-2)
+    { id: 4, x: 5, y: 1, length: 2, orientation: 'v', color: '#8B5CF6' },                 // 紫车 (5, 1-2)
+    { id: 5, x: 0, y: 0, length: 2, orientation: 'h', color: '#EC4899' },                 // 粉车 (0-1, 0)
+    { id: 6, x: 0, y: 4, length: 2, orientation: 'v', color: '#F97316' },                 // 橙红车 (0, 4-5)
+    { id: 7, x: 1, y: 4, length: 2, orientation: 'h', color: '#06B6D4' },                 // 青车 (1-2, 4)
+    { id: 8, x: 3, y: 4, length: 2, orientation: 'h', color: '#14B8A6' },                 // 青绿车 (3-4, 4)
+    { id: 9, x: 2, y: 5, length: 3, orientation: 'h', color: '#6366F1' },                 // 蓝紫车 (2-4, 5)
   ],
 ];
 
 export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPlaying, onScore, onGameOver }) => {
-  // 设置默认进入第一关 (Index 0)
-  const [levelIndex, setLevelIndex] = useState(0);
+  // 默认进入第21关 (Index 20) 用于测试
+  const [levelIndex, setLevelIndex] = useState(20);
   const [cars, setCars] = useState<Car[]>([]);
   const [gameState, setGameState] = useState<GameState>(GameState.IDLE);
   const [draggingCarId, setDraggingCarId] = useState<number | null>(null);
@@ -211,7 +298,7 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
     if (gameState !== GameState.PLAYING || !isPlaying) return;
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-    
+
     setDraggingCarId(id);
     setDragStartPos({ x: clientX, y: clientY });
     const car = cars.find(c => c.id === id);
@@ -234,11 +321,11 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
       const carIndex = prevCars.findIndex(c => c.id === draggingCarId);
       const car = prevCars[carIndex];
       const newCars = [...prevCars];
-      
+
       if (car.orientation === 'h') {
         let newX = Math.round(initialCarPos.x + dx);
         newX = Math.max(0, Math.min(GRID_SIZE - car.length, newX));
-        
+
         const direction = newX > car.x ? 1 : -1;
         let finalX = car.x;
         for (let x = car.x + direction; direction > 0 ? x <= newX : x >= newX; x += direction) {
@@ -314,14 +401,14 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
   const animate = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     frameCountRef.current++;
-    
+
     ctx.clearRect(0, 0, width, height);
-    
+
     // 渲染与火眼金睛完全一致的背景效果
     renderCommonBackground(ctx, width, height, frameCountRef.current, visualAcuity);
 
@@ -332,17 +419,17 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const dpr = window.devicePixelRatio || 1;
-    
+
     // 设置实际分辨率（物理像素）
     canvas.width = width * dpr;
     canvas.height = height * dpr;
-    
+
     // 设置CSS显示尺寸（逻辑像素）
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    
+
     // 缩放上下文以匹配设备像素比
     const ctx = canvas.getContext('2d');
     if (ctx) {
@@ -364,8 +451,8 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
   return (
     <div className="relative w-full h-full overflow-hidden">
       {/* 1. 背景层 Canvas - 与火眼金睛游戏完全一致 */}
-      <canvas 
-        ref={canvasRef} 
+      <canvas
+        ref={canvasRef}
         className="absolute inset-0 pointer-events-none z-0"
       />
 
@@ -375,7 +462,7 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
         </div>
 
         <div className="relative p-4 bg-slate-300 rounded-3xl shadow-2xl border-8 border-slate-400">
-          <div 
+          <div
             ref={containerRef}
             className="relative bg-slate-200 rounded-xl overflow-visible shadow-inner grid grid-cols-6 grid-rows-6"
             style={{ width: 'min(85vw, 400px)', height: 'min(85vw, 400px)' }}
@@ -386,12 +473,12 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
               </div>
             ))}
 
-            <div 
+            <div
               className="absolute -right-12 top-0 flex items-center h-full z-0"
               style={{ top: `${(EXIT_ROW / GRID_SIZE) * 100}%`, height: `${(1 / GRID_SIZE) * 100}%` }}
             >
               <div className="flex flex-col items-center gap-1 bg-yellow-400 px-2 py-3 rounded-r-lg shadow-md border-y border-r border-yellow-500 animate-pulse">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#78350f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="rotate-180"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#78350f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="rotate-180"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
                 <span className="text-[10px] font-black text-yellow-900 leading-none">EXIT</span>
               </div>
             </div>
@@ -410,7 +497,7 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
                   zIndex: draggingCarId === car.id ? 20 : 10
                 }}
               >
-                <div 
+                <div
                   className={`w-full h-full rounded-2xl shadow-lg border-b-4 border-black/20 relative overflow-hidden ${car.orientation === 'h' ? 'rounded-l-[20px] rounded-r-[40px]' : 'rounded-t-[20px] rounded-b-[40px]'}`}
                   style={{ backgroundColor: car.color }}
                 >
@@ -419,35 +506,35 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
                     <>
                       {/* 车顶 */}
                       <div className="absolute top-1/4 left-1/5 right-1/5 h-1/2 bg-white/15 rounded-t-[15px] rounded-b-none"></div>
-                      
+
                       {/* 车窗 */}
                       <div className="absolute top-1/4 left-1/4 right-1/4 h-1/3 bg-white/30 rounded-[10px]"></div>
-                      
+
                       {/* 车轮 */}
                       <div className="absolute bottom-1 left-1/4 w-1/6 h-1/4 bg-gray-700 rounded-full shadow-inner"></div>
                       <div className="absolute bottom-1 right-1/4 w-1/6 h-1/4 bg-gray-700 rounded-full shadow-inner"></div>
-                      
+
                       {/* 车灯 */}
                       <div className="absolute top-1/3 right-1 w-1/8 h-1/6 bg-white/80 rounded-r-[8px]"></div>
                       <div className="absolute bottom-1/3 right-1 w-1/8 h-1/6 bg-white/80 rounded-r-[8px]"></div>
                     </>
                   )}
-                  
+
                   {/* 竖向汽车样式 */}
                   {car.orientation === 'v' && (
                     <>
                       {/* 车顶 */}
                       <div className="absolute top-1/5 left-1/4 right-1/4 h-1/2 bg-white/15 rounded-t-[15px] rounded-b-none"></div>
-                      
+
                       {/* 车窗 */}
                       <div className="absolute top-1/4 left-1/3 right-1/3 h-1/3 bg-white/30 rounded-[10px]"></div>
-                      
+
                       {/* 车轮 */}
                       <div className="absolute left-1 top-1/4 w-1/4 h-1/6 bg-gray-700 rounded-full shadow-inner"></div>
                       <div className="absolute right-1 top-1/4 w-1/4 h-1/6 bg-gray-700 rounded-full shadow-inner"></div>
                       <div className="absolute left-1 bottom-1/4 w-1/4 h-1/6 bg-gray-700 rounded-full shadow-inner"></div>
                       <div className="absolute right-1 bottom-1/4 w-1/4 h-1/6 bg-gray-700 rounded-full shadow-inner"></div>
-                      
+
                       {/* 车灯 */}
                       <div className="absolute bottom-1 left-1/3 w-1/3 h-1/8 bg-white/80 rounded-b-[8px]"></div>
                       <div className="absolute bottom-1 right-1/3 w-1/3 h-1/8 bg-white/80 rounded-b-[8px]"></div>
@@ -469,10 +556,10 @@ export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPla
 
         <div className="flex items-center gap-4">
           <div className="bg-blue-100 text-blue-700 px-4 py-1 rounded-full font-bold flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/><path d="m6 15 6-6 6 6"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" /><path d="m6 15 6-6 6 6" /></svg>
             <span>关卡 {levelIndex + 1} / {LEVELS.length}</span>
           </div>
-           <button 
+          <button
             onClick={() => initLevel(levelIndex)}
             className="bg-white px-6 py-2 rounded-full font-bold text-slate-600 shadow-lg hover:bg-slate-50 transition-all active:scale-95"
           >

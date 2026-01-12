@@ -31,56 +31,187 @@ export const DeductionSubGame: React.FC<{ difficulty: string; onComplete: (s: nu
     const [touchPos, setTouchPos] = useState({ x: 0, y: 0 });
     const dragStartPos = useRef({ x: 0, y: 0 });
     const audioUnlocked = useRef(false);
+    const [rvReady, setRvReady] = useState(false);
 
-    // V15 - 细节优化与交互修复
+    // 检测 ResponsiveVoice 是否已加载
+    useEffect(() => {
+        const checkRV = () => {
+            if (typeof (window as any).responsiveVoice !== 'undefined') {
+                const rv = (window as any).responsiveVoice;
+                if (rv.voiceSupport && rv.voiceSupport()) {
+                    setRvReady(true);
+                    console.log('✅ ResponsiveVoice 已就绪');
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        // 立即检查
+        if (checkRV()) return;
+
+        // 每隔 200ms 检查一次，最多等待 5 秒
+        let attempts = 0;
+        const maxAttempts = 25;
+        const interval = setInterval(() => {
+            attempts++;
+            if (checkRV() || attempts >= maxAttempts) {
+                clearInterval(interval);
+                if (attempts >= maxAttempts && !rvReady) {
+                    console.warn('⚠️ ResponsiveVoice 未能加载');
+                }
+            }
+        }, 200);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // V16 - 强化移动端语音初始化
     useEffect(() => {
         const unlock = () => {
             if (audioUnlocked.current) return;
             try {
                 if (!('speechSynthesis' in window)) return;
+
+                // 取消任何之前的语音
                 window.speechSynthesis.cancel();
-                const u = new SpeechSynthesisUtterance('');
-                u.volume = 0;
-                window.speechSynthesis.speak(u);
+
+                // 播放一个测试语音来真正初始化系统（移动端需要）
+                const testUtterance = new SpeechSynthesisUtterance('测试');
+                testUtterance.lang = 'zh-CN';
+                testUtterance.volume = 0.01; // 极小音量
+                testUtterance.rate = 2.0; // 快速播放
+
+                // 获取并设置中文语音
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length > 0) {
+                    const zhVoice = voices.find(v => v.lang.startsWith('zh'));
+                    if (zhVoice) testUtterance.voice = zhVoice;
+                }
+
+                window.speechSynthesis.speak(testUtterance);
                 audioUnlocked.current = true;
+                console.log('语音系统已解锁');
+
                 window.removeEventListener('touchstart', unlock);
                 window.removeEventListener('mousedown', unlock);
-            } catch (e) { }
+                window.removeEventListener('pointerdown', unlock);
+            } catch (e) {
+                console.warn('语音解锁失败:', e);
+            }
         };
-        window.addEventListener('touchstart', unlock, { passive: true });
-        window.addEventListener('mousedown', unlock);
+
+        // 监听多种事件以确保捕获到首次用户交互
+        window.addEventListener('touchstart', unlock, { passive: true, once: true });
+        window.addEventListener('mousedown', unlock, { once: true });
+        window.addEventListener('pointerdown', unlock, { once: true });
+
         return () => {
             window.removeEventListener('touchstart', unlock);
             window.removeEventListener('mousedown', unlock);
+            window.removeEventListener('pointerdown', unlock);
         };
     }, []);
 
     const speak = useCallback((t: string) => {
-        if (!('speechSynthesis' in window)) return;
-        try {
-            window.speechSynthesis.cancel();
+        console.log('🔊 speak 被调用:', t);
+        console.log('ResponsiveVoice 状态:', {
+            defined: typeof (window as any).responsiveVoice !== 'undefined',
+            ready: rvReady,
+            speechSynthesis: 'speechSynthesis' in window
+        });
 
-            // 兜底解锁
-            if (!audioUnlocked.current) {
-                const u0 = new SpeechSynthesisUtterance('');
-                u0.volume = 0;
-                window.speechSynthesis.speak(u0);
+        // 方案1: 尝试使用 ResponsiveVoice（移动端兼容性更好）
+        if (rvReady && typeof (window as any).responsiveVoice !== 'undefined') {
+            try {
+                const rv = (window as any).responsiveVoice;
+                // 取消当前播放
+                if (rv.isPlaying()) {
+                    rv.cancel();
+                }
+                // 使用中文语音播放
+                rv.speak(t, "Chinese Female", {
+                    pitch: 1,
+                    rate: 1,
+                    volume: 1,
+                    onstart: () => console.log('✅ ResponsiveVoice 开始播放:', t),
+                    onend: () => console.log('✅ ResponsiveVoice 播放完成'),
+                    onerror: (e: any) => console.error('❌ ResponsiveVoice 错误:', e)
+                });
                 audioUnlocked.current = true;
+                console.log('✅ 使用 ResponsiveVoice 播放');
+                return;
+            } catch (e) {
+                console.warn('⚠️ ResponsiveVoice 失败，尝试降级:', e);
             }
-
-            const u = new SpeechSynthesisUtterance(t);
-            u.lang = 'zh-CN';
-            u.rate = 1.0;
-
-            const voices = window.speechSynthesis.getVoices();
-            const zhVoice = voices.find(v => v.lang.includes('zh') || v.name.includes('Chinese'));
-            if (zhVoice) u.voice = zhVoice;
-
-            window.speechSynthesis.speak(u);
-        } catch (e) {
-            console.warn('Speech error:', e);
+        } else if (typeof (window as any).responsiveVoice !== 'undefined') {
+            console.warn('⚠️ ResponsiveVoice 存在但未就绪，rvReady=', rvReady);
         }
-    }, []);
+
+        // 方案2: 降级到原生 Speech Synthesis
+        if ('speechSynthesis' in window) {
+            try {
+                console.log('📢 尝试使用 Speech Synthesis');
+                // 强制取消之前的语音（同步）
+                window.speechSynthesis.cancel();
+
+                // 立即创建并播放语音（必须同步）
+                const utterance = new SpeechSynthesisUtterance(t);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 1.0;
+                utterance.volume = 1.0;
+                utterance.pitch = 1.0;
+
+                // 获取中文语音
+                let voices = window.speechSynthesis.getVoices();
+                console.log('📋 可用语音数量:', voices.length);
+
+                if (voices.length === 0) {
+                    console.warn('⚠️ 语音列表为空，使用默认语音');
+                } else {
+                    const zhVoice = voices.find(v =>
+                        v.lang === 'zh-CN' ||
+                        v.lang === 'zh-TW' ||
+                        v.lang.startsWith('zh') ||
+                        v.name.toLowerCase().includes('chinese') ||
+                        v.name.toLowerCase().includes('mandarin')
+                    );
+                    if (zhVoice) {
+                        utterance.voice = zhVoice;
+                        console.log('✅ 使用语音:', zhVoice.name);
+                    } else {
+                        console.log('⚠️ 未找到中文语音，使用默认语音');
+                    }
+                }
+
+                utterance.onerror = (e) => {
+                    console.error('❌ Speech Synthesis 错误:', e);
+                };
+
+                utterance.onstart = () => {
+                    console.log('✅ Speech Synthesis 开始播放:', t);
+                };
+
+                utterance.onend = () => {
+                    console.log('✅ Speech Synthesis 播放完成');
+                };
+
+                // ⚠️ 关键：立即同步播放
+                window.speechSynthesis.speak(utterance);
+                audioUnlocked.current = true;
+                console.log('✅ 使用 Speech Synthesis 播放');
+                return;
+            } catch (e) {
+                console.error('❌ Speech Synthesis 失败:', e);
+            }
+        } else {
+            console.warn('❌ Speech Synthesis 不支持');
+        }
+
+        // 方案3: 终极降级 - 显示文本提示（至少让用户知道内容）
+        console.warn('⚠️ 所有语音方案均不可用，显示文本提示:', t);
+        // 文本已经通过 setActive 显示在界面上，这里只记录日志
+    }, [rvReady]);
 
     const generate = useCallback(() => {
         const count = difficulty === 'Easy' ? 2 : difficulty === 'Medium' ? 3 : 4;
@@ -169,10 +300,12 @@ export const DeductionSubGame: React.FC<{ difficulty: string; onComplete: (s: nu
         const dx = Math.abs(e.clientX - dragStartPos.current.x);
         const dy = Math.abs(e.clientY - dragStartPos.current.y);
 
-        // 如果位移小于 20px，视为“点击”而不是“拖拽”
+        // 如果位移小于 20px，视为"点击"而不是"拖拽"
         if (dx < 20 && dy < 20) {
-            setActive({ id: dragging.id, text: dragging.clue });
+            // ⚠️ 关键修复: 立即在用户交互的同步调用栈中播放语音
+            // 这是移动端 Speech Synthesis API 的强制要求
             speak(dragging.clue);
+            setActive({ id: dragging.id, text: dragging.clue });
             setDragging(null); setTouchPos({ x: 0, y: 0 });
             return;
         }
