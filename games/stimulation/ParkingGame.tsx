@@ -257,8 +257,8 @@ const LEVELS: Car[][] = [
 ];
 
 export const ParkingGame: React.FC<GameComponentProps> = ({ width, height, isPlaying, onScore, onGameOver }) => {
-  // 默认进入第21关 (Index 20) 用于测试
-  const [levelIndex, setLevelIndex] = useState(20);
+  // 设置默认进入第一关 (Index 0)
+  const [levelIndex, setLevelIndex] = useState(0);
   const [cars, setCars] = useState<Car[]>([]);
   const [gameState, setGameState] = useState<GameState>(GameState.IDLE);
   const [draggingCarId, setDraggingCarId] = useState<number | null>(null);
