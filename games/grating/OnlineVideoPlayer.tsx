@@ -59,6 +59,10 @@ const VIDEO_LIST: VideoSource[] = [
 ];
 
 const STORAGE_KEY = 'customVideoPlaylist';
+const LAST_VIDEO_STORAGE_KEY = 'lastWatchedVideo';
+
+
+
 
 export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height, isPlaying }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -66,9 +70,22 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const frameCountRef = useRef(0);
     const visualAcuity = localStorage.getItem('visualAcuity') || '0.2-0.4';
 
-    const [currentVideo, setCurrentVideo] = useState<VideoSource>(VIDEO_LIST[0]);
+    const [currentVideo, setCurrentVideo] = useState<VideoSource>(() => {
+        try {
+            const saved = localStorage.getItem(LAST_VIDEO_STORAGE_KEY);
+            if (saved) {
+                return JSON.parse(saved);
+            }
+        } catch (err) {
+            console.error('加载上次播放视频失败:', err);
+        }
+        return VIDEO_LIST[0];
+    });
+
     const [showMenu, setShowMenu] = useState(false);
     const [showCustomPlaylist, setShowCustomPlaylist] = useState(false);
+
+
 
     // 自定义播放列表状态
     const [customPlaylist, setCustomPlaylist] = useState<CustomFolder[]>([]);
@@ -90,6 +107,19 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const [isResizing, setIsResizing] = useState(false);
     const resizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
     const videoContainerRef = useRef<HTMLDivElement>(null);
+
+    // 自定义播放列表面板位置与大小状态
+    const [playlistPos, setPlaylistPos] = useState(() => ({
+        x: (width - 384) / 2,
+        y: (height - 500) / 2
+    })); // 默认位置居中
+
+    const [playlistSize, setPlaylistSize] = useState({ width: 384, height: 500 });
+    const [isDraggingPlaylist, setIsDraggingPlaylist] = useState(false);
+    const [isResizingPlaylist, setIsResizingPlaylist] = useState(false);
+    const playlistDragStartRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
+    const playlistResizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
+
 
     // 透明度状态（视觉刺激时：调视频整体透明度；立体视时：调红蓝遮罩透明度）
     const [opacity, setOpacity] = useState(0.85);
@@ -139,12 +169,38 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const parsed = JSON.parse(saved);
-                setCustomPlaylist(Array.isArray(parsed) ? parsed : []);
+                const playlist = Array.isArray(parsed) ? parsed : [];
+                setCustomPlaylist(playlist);
+
+                // 自动展开当前视频所在的文件夹
+                if (currentVideo && playlist.length > 0) {
+                    const findPath = (nodes: CustomPlaylistNode[], targetId: string, path: string[] = []): string[] | null => {
+                        for (const node of nodes) {
+                            if (!isFolder(node)) {
+                                if (node.id === targetId) return path;
+                                continue;
+                            }
+                            const found = findPath(node.children, targetId, [...path, node.id]);
+                            if (found) return found;
+                        }
+                        return null;
+                    };
+
+                    const path = findPath(playlist, currentVideo.id);
+                    if (path && path.length > 0) {
+                        setExpandedFolders(prev => {
+                            const next = new Set(prev);
+                            path.forEach(id => next.add(id));
+                            return next;
+                        });
+                    }
+                }
             }
         } catch (err) {
             console.error('加载自定义播放列表失败:', err);
         }
     }, []);
+
 
     // 保存自定义播放列表到localStorage
     const saveCustomPlaylist = (playlist: CustomFolder[]) => {
@@ -376,7 +432,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     };
 
     // 选择视频播放
-    const selectVideo = (video: CustomVideoItem) => {
+    const selectVideo = (video: CustomVideoItem | VideoSource) => {
         // 提取并处理URL
         const processedUrl = extractUrlFromIframe(video.url);
 
@@ -388,7 +444,17 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         setCurrentVideo(videoSource);
         setShowMenu(false);
         setShowCustomPlaylist(false);
+
+        // 保存到播放记录
+        try {
+            localStorage.setItem(LAST_VIDEO_STORAGE_KEY, JSON.stringify(videoSource));
+        } catch (err) {
+            console.error('保存播放记录失败:', err);
+        }
     };
+
+
+
 
     // 导出播放列表
     const exportPlaylist = () => {
@@ -743,7 +809,73 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         }
     };
 
+    // 自定义播放列表拖拽处理
+    const handlePlaylistDragStart = (e: React.PointerEvent) => {
+        // 只有点击头部才能拖拽
+        const target = e.target as HTMLElement;
+        if (!target.closest('.playlist-header')) return;
+
+        setIsDraggingPlaylist(true);
+        playlistDragStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            startX: playlistPos.x,
+            startY: playlistPos.y
+        };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const handlePlaylistDragMove = (e: React.PointerEvent) => {
+        if (!isDraggingPlaylist || !playlistDragStartRef.current) return;
+
+        const dx = e.clientX - playlistDragStartRef.current.x;
+        const dy = e.clientY - playlistDragStartRef.current.y;
+
+        setPlaylistPos({
+            x: playlistDragStartRef.current.startX + dx,
+            y: playlistDragStartRef.current.startY + dy
+        });
+    };
+
+    const handlePlaylistDragEnd = (e: React.PointerEvent) => {
+        setIsDraggingPlaylist(false);
+        playlistDragStartRef.current = null;
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    };
+
+    // 自定义播放列表调整大小处理
+    const handlePlaylistResizeStart = (e: React.PointerEvent) => {
+        e.stopPropagation();
+        setIsResizingPlaylist(true);
+        playlistResizeStartRef.current = {
+            x: e.clientX,
+            y: e.clientY,
+            startWidth: playlistSize.width,
+            startHeight: playlistSize.height
+        };
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    };
+
+    const handlePlaylistResizeMove = (e: React.PointerEvent) => {
+        if (!isResizingPlaylist || !playlistResizeStartRef.current) return;
+
+        const dx = e.clientX - playlistResizeStartRef.current.x;
+        const dy = e.clientY - playlistResizeStartRef.current.y;
+
+        setPlaylistSize({
+            width: Math.max(300, playlistResizeStartRef.current.startWidth + dx),
+            height: Math.max(200, playlistResizeStartRef.current.startHeight + dy)
+        });
+    };
+
+    const handlePlaylistResizeEnd = (e: React.PointerEvent) => {
+        setIsResizingPlaylist(false);
+        playlistResizeStartRef.current = null;
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    };
+
     // 重置大小到默认值
+
     const resetSize = () => {
         setVideoSize({ width: 480, height: 270 });
     };
@@ -820,84 +952,19 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                 {VIDEO_LIST.map(video => (
                                     <button
                                         key={video.id}
-                                        onClick={() => {
-                                            setCurrentVideo(video);
-                                            setShowMenu(false);
-                                        }}
+                                        onClick={() => selectVideo(video)}
                                         className={`w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 ${currentVideo.id === video.id ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'
                                             }`}
                                     >
                                         {video.title}
                                     </button>
+
                                 ))}
-                            </div>
-                        )}
-
-                        {/* 自定义播放列表面板 */}
-                        {showCustomPlaylist && (
-                            <div className="absolute top-full right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-100 animate-fade-in z-50 flex flex-col max-h-[70vh]">
-                                {/* 头部 */}
-                                <div className="px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center justify-between border-b border-purple-400">
-                                    <div className="flex items-center gap-2">
-                                        <Folder className="w-5 h-5" />
-                                        <span className="font-bold">自定义播放列表</span>
-                                    </div>
-                                    <button
-                                        onClick={() => setShowCustomPlaylist(false)}
-                                        className="text-white/80 hover:text-white"
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-
-                                {/* 工具栏 */}
-                                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={() => addFolder([])}
-                                            className="px-2 py-1 bg-green-500 text-white rounded text-xs font-bold hover:bg-green-600 flex items-center gap-1"
-                                            title="添加文件夹"
-                                        >
-                                            <FolderPlus className="w-3 h-3" />
-                                            文件夹
-                                        </button>
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={exportPlaylist}
-                                            className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600 flex items-center gap-1"
-                                            title="导出"
-                                        >
-                                            <Download className="w-3 h-3" />
-                                            导出
-                                        </button>
-                                        <button
-                                            onClick={importPlaylist}
-                                            className="px-2 py-1 bg-orange-500 text-white rounded text-xs font-bold hover:bg-orange-600 flex items-center gap-1"
-                                            title="导入"
-                                        >
-                                            <UploadIcon className="w-3 h-3" />
-                                            导入
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* 播放列表树 */}
-                                <div className="flex-1 overflow-y-auto p-2">
-                                    {customPlaylist.length === 0 ? (
-                                        <div className="text-center py-8 text-slate-400">
-                                            <Folder className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                            <p className="text-sm">还没有自定义列表</p>
-                                            <p className="text-xs mt-1">点击上方"文件夹"按钮开始创建</p>
-                                        </div>
-                                    ) : (
-                                        renderPlaylistTree(customPlaylist)
-                                    )}
-                                </div>
                             </div>
                         )}
                     </div>
                 </div>
+
 
                 {/* 播放器容器 */}
                 <div
@@ -1038,6 +1105,96 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                     正在播放: {currentVideo.title} — 请保持注视屏幕中央
                 </p>
             </div>
+
+            {/* 自定义播放列表面板 - 支持绝对位置拖拽与缩放 */}
+            {showCustomPlaylist && (
+                <div
+                    className="absolute bg-white rounded-xl shadow-2xl border border-slate-100 z-50 flex flex-col group/playlist overflow-hidden animate-fade-in pointer-events-auto"
+                    style={{
+                        left: `${playlistPos.x}px`,
+                        top: `${playlistPos.y}px`,
+                        width: `${playlistSize.width}px`,
+                        height: `${playlistSize.height}px`,
+                    }}
+                >
+                    {/* 头部 - 拖拽区域 */}
+                    <div
+                        className="playlist-header px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center justify-between border-b border-purple-400 cursor-move select-none"
+                        onPointerDown={handlePlaylistDragStart}
+                        onPointerMove={handlePlaylistDragMove}
+                        onPointerUp={handlePlaylistDragEnd}
+                        onPointerCancel={handlePlaylistDragEnd}
+                    >
+                        <div className="flex items-center gap-2 pointer-events-none">
+                            <Folder className="w-5 h-5" />
+                            <span className="font-bold">自定义播放列表</span>
+                        </div>
+                        <button
+                            onClick={() => setShowCustomPlaylist(false)}
+                            className="text-white/80 hover:text-white p-1"
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    {/* 工具栏 */}
+                    <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-hidden">
+                        <div className="flex gap-1">
+                            <button
+                                onClick={() => addFolder([])}
+                                className="px-2 py-1 bg-green-500 text-white rounded text-xs font-bold hover:bg-green-600 flex items-center gap-1"
+                                title="添加文件夹"
+                            >
+                                <FolderPlus className="w-3 h-3" />
+                                文件夹
+                            </button>
+                        </div>
+                        <div className="flex gap-1">
+                            <button
+                                onClick={exportPlaylist}
+                                className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600 flex items-center gap-1"
+                                title="导出"
+                            >
+                                <Download className="w-3 h-3" />
+                                导出
+                            </button>
+                            <button
+                                onClick={importPlaylist}
+                                className="px-2 py-1 bg-orange-500 text-white rounded text-xs font-bold hover:bg-orange-600 flex items-center gap-1"
+                                title="导入"
+                            >
+                                <UploadIcon className="w-3 h-3" />
+                                导入
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 播放列表树 */}
+                    <div className="flex-1 overflow-y-auto p-2">
+                        {customPlaylist.length === 0 ? (
+                            <div className="text-center py-8 text-slate-400">
+                                <Folder className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">还没有自定义列表</p>
+                                <p className="text-xs mt-1">点击上方"文件夹"按钮开始创建</p>
+                            </div>
+                        ) : (
+                            renderPlaylistTree(customPlaylist)
+                        )}
+                    </div>
+
+                    {/* 缩放手柄 */}
+                    <div
+                        className="absolute bottom-0 right-0 w-6 h-6 bg-slate-100/50 cursor-nwse-resize flex items-center justify-center opacity-0 group-hover/playlist:opacity-100 transition-opacity"
+                        onPointerDown={handlePlaylistResizeStart}
+                        onPointerMove={handlePlaylistResizeMove}
+                        onPointerUp={handlePlaylistResizeEnd}
+                        onPointerCancel={handlePlaylistResizeEnd}
+                    >
+                        <div className="w-1.5 h-1.5 border-r-2 border-b-2 border-slate-400 rotate-45 mb-1 mr-1"></div>
+                    </div>
+                </div>
+            )}
         </div>
     );
+
 };
