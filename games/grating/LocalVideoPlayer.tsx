@@ -9,11 +9,11 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
     const requestRef = useRef<number>(0);
     const frameCountRef = useRef(0);
     const visualAcuity = localStorage.getItem('visualAcuity') || '0.2-0.4';
-    
+
     const [videoSrc, setVideoSrc] = useState<string | null>(null);
     const [fileName, setFileName] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
-    
+
     // 视力类型：视觉刺激 / 立体视，从本地存储读取上次保存的值
     const [visionType, setVisionType] = useState<'visual' | 'stereo'>(() => {
         const saved = localStorage.getItem('gratingPlayerVisionType');
@@ -28,17 +28,17 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
     const [isResizing, setIsResizing] = useState(false);
     const resizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
     const videoContainerRef = useRef<HTMLDivElement>(null);
-    
+
     // 透明度状态（视觉刺激时：调视频整体透明度；立体视时：调红蓝遮罩透明度）
-    const [opacity, setOpacity] = useState(1.0);
+    const [opacity, setOpacity] = useState(0.85);
     const [showOpacityControl, setShowOpacityControl] = useState(false);
 
-    // 当切换为立体视时，将遮罩默认透明度设置为 80%；切回视觉刺激则恢复为 100%
+    // 当切换为立体视时，将遮罩默认透明度设置为 80%；切回视觉刺激则恢复为 85%
     useEffect(() => {
         if (visionType === 'stereo') {
             setOpacity(0.8);
         } else {
-            setOpacity(1.0);
+            setOpacity(0.85);
         }
     }, [visionType]);
 
@@ -68,17 +68,17 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         const dpr = window.devicePixelRatio || 1;
-        
+
         // 设置实际分辨率（物理像素）
         canvas.width = width * dpr;
         canvas.height = height * dpr;
-        
+
         // 设置CSS显示尺寸（逻辑像素）
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
-        
+
         // 缩放上下文以匹配设备像素比
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -128,7 +128,7 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
         e.preventDefault();
         e.stopPropagation();
         if (!videoContainerRef.current) return;
-        
+
         const rect = videoContainerRef.current.getBoundingClientRect();
         setIsResizing(true);
         resizeStartRef.current = {
@@ -137,7 +137,7 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
             startWidth: videoSize.width,
             startHeight: videoSize.height
         };
-        
+
         // 设置全局指针捕获
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
@@ -145,14 +145,14 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
     const handleResizeMove = (e: React.PointerEvent) => {
         if (!isResizing || !resizeStartRef.current) return;
         e.preventDefault();
-        
+
         const deltaX = e.clientX - resizeStartRef.current.x;
         const deltaY = e.clientY - resizeStartRef.current.y;
-        
+
         // 计算新尺寸（保持16:9比例或自由调整）
         const newWidth = Math.max(240, Math.min(width * 0.9, resizeStartRef.current.startWidth + deltaX));
         const newHeight = Math.max(135, Math.min(height * 0.9, resizeStartRef.current.startHeight + deltaY));
-        
+
         setVideoSize({ width: newWidth, height: newHeight });
     };
 
@@ -161,7 +161,7 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
         e.preventDefault();
         setIsResizing(false);
         resizeStartRef.current = null;
-        
+
         // 释放指针捕获
         try {
             (e.target as HTMLElement).releasePointerCapture(e.pointerId);
@@ -174,10 +174,10 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
     const resetSize = () => {
         setVideoSize({ width: 480, height: 270 });
     };
-    
+
     // 重置透明度到默认值
     const resetOpacity = () => {
-        setOpacity(1.0);
+        setOpacity(0.85);
     };
 
     return (
@@ -207,7 +207,7 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
 
             {/* 3. 视频区域 */}
             <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                <div 
+                <div
                     ref={videoContainerRef}
                     className="pointer-events-auto relative bg-slate-900 rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 backdrop-blur-sm flex flex-col items-center justify-center"
                     style={{
@@ -223,14 +223,14 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
                 >
                     {videoSrc ? (
                         <div className="relative w-full h-full group">
-                            <video 
+                            <video
                                 src={videoSrc}
                                 className="w-full h-full object-contain bg-black"
                                 controls
                                 autoPlay
                                 loop
                             />
-                            <button 
+                            <button
                                 onClick={clearVideo}
                                 className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg z-20"
                                 title="移除视频"
@@ -239,14 +239,14 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
                             </button>
                             {/* 重置大小按钮 */}
                             <div className="absolute top-2 left-2 flex gap-2 z-20">
-                                <button 
+                                <button
                                     onClick={resetSize}
                                     className="p-2 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600 shadow-lg"
                                     title="重置窗口大小"
                                 >
                                     <Maximize2 className="w-4 h-4" />
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setShowOpacityControl(!showOpacityControl)}
                                     className="p-2 bg-purple-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-600 shadow-lg"
                                     title="调整透明度"
@@ -261,7 +261,7 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
                                         <span className="text-sm font-bold text-slate-800">
                                             {visionType === 'visual' ? '透明度' : '遮罩透明度'}
                                         </span>
-                                        <button 
+                                        <button
                                             onClick={resetOpacity}
                                             className="text-xs text-blue-600 hover:text-blue-800 font-bold"
                                         >
@@ -327,25 +327,25 @@ export const LocalVideoPlayer: React.FC<GameComponentProps> = ({ width, height, 
                                 <h3 className="text-white font-bold text-lg mb-1">选择本地视频</h3>
                                 <p className="text-white/50 text-xs">支持 MP4, WebM 等常见格式</p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="px-6 py-2 bg-brand-blue hover:bg-blue-500 text-white rounded-full font-bold shadow-lg transition-all active:scale-95 flex items-center gap-2 mx-auto"
                             >
                                 <Upload className="w-4 h-4" />
                                 打开文件
                             </button>
-                            <input 
+                            <input
                                 ref={fileInputRef}
-                                type="file" 
-                                accept="video/*" 
-                                className="hidden" 
+                                type="file"
+                                accept="video/*"
+                                className="hidden"
                                 onChange={handleFileChange}
                             />
                         </div>
                     )}
                 </div>
             </div>
-            
+
             <div className="absolute bottom-8 left-0 right-0 text-center pointer-events-none">
                 <p className="text-white/80 font-bold text-xs md:text-sm bg-black/40 inline-block px-4 py-1.5 rounded-full backdrop-blur-md">
                     {fileName ? `正在播放: ${fileName}` : '请打开视频文件开始训练'}

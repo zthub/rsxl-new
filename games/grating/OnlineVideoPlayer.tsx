@@ -65,17 +65,17 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const requestRef = useRef<number>(0);
     const frameCountRef = useRef(0);
     const visualAcuity = localStorage.getItem('visualAcuity') || '0.2-0.4';
-    
+
     const [currentVideo, setCurrentVideo] = useState<VideoSource>(VIDEO_LIST[0]);
     const [showMenu, setShowMenu] = useState(false);
     const [showCustomPlaylist, setShowCustomPlaylist] = useState(false);
-    
+
     // 自定义播放列表状态
     const [customPlaylist, setCustomPlaylist] = useState<CustomFolder[]>([]);
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
     const [editingNode, setEditingNode] = useState<{ id: string; type: 'folder' | 'video'; parentPath: string[] } | null>(null);
     const [newNodeData, setNewNodeData] = useState<{ name: string; url?: string }>({ name: '', url: '' });
-    
+
     // 视力类型：视觉刺激 / 立体视，从本地存储读取上次保存的值
     const [visionType, setVisionType] = useState<'visual' | 'stereo'>(() => {
         const saved = localStorage.getItem('gratingPlayerVisionType');
@@ -90,9 +90,9 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const [isResizing, setIsResizing] = useState(false);
     const resizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
     const videoContainerRef = useRef<HTMLDivElement>(null);
-    
+
     // 透明度状态（视觉刺激时：调视频整体透明度；立体视时：调红蓝遮罩透明度）
-    const [opacity, setOpacity] = useState(1.0);
+    const [opacity, setOpacity] = useState(0.85);
     const [showOpacityControl, setShowOpacityControl] = useState(false);
 
     // 当切换为立体视时，将遮罩默认透明度设置为 80%；切回视觉刺激则恢复为 100%
@@ -100,7 +100,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         if (visionType === 'stereo') {
             setOpacity(0.8);
         } else {
-            setOpacity(1.0);
+            setOpacity(0.85);
         }
     }, [visionType]);
 
@@ -266,7 +266,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 return;
             }
         }
-        
+
         const updated = [...customPlaylist];
         const node = findNodeByPath(path, updated);
         if (node) {
@@ -304,44 +304,44 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     // 检测是否为抖音视频链接
     const isDouyinVideo = (url: string): boolean => {
         if (!url || !url.trim()) return false;
-        
+
         const trimmed = url.trim().toLowerCase();
-        
+
         // 检查是否包含抖音域名
         // 抖音短链：v.douyin.com
         // 抖音完整链接：www.douyin.com 或 douyin.com
         // 抖音视频链接：douyin.com/video/
-        if (trimmed.includes('v.douyin.com') || 
+        if (trimmed.includes('v.douyin.com') ||
             trimmed.includes('douyin.com/video/') ||
             (trimmed.includes('douyin.com') && trimmed.includes('/video/'))) {
             return true;
         }
-        
+
         // 检查iframe标签中的src是否包含抖音链接
         const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
         if (srcMatch && srcMatch[1]) {
             const srcUrl = srcMatch[1].toLowerCase();
-            if (srcUrl.includes('v.douyin.com') || 
+            if (srcUrl.includes('v.douyin.com') ||
                 srcUrl.includes('douyin.com/video/') ||
                 (srcUrl.includes('douyin.com') && srcUrl.includes('/video/'))) {
                 return true;
             }
         }
-        
+
         return false;
     };
 
     // 从iframe标签中提取src属性，并处理抖音链接
     const extractUrlFromIframe = (input: string): string => {
         if (!input || !input.trim()) return '';
-        
+
         const trimmed = input.trim();
-        
+
         // 尝试从iframe标签中提取src
         // 匹配 src="..." 或 src='...'
         const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
         let url = srcMatch && srcMatch[1] ? srcMatch[1] : trimmed;
-        
+
         // 处理抖音短链和链接
         // 抖音短链格式：https://v.douyin.com/xxxxx/ 或 https://v.douyin.com/xxxxx
         if (url.includes('v.douyin.com/')) {
@@ -354,7 +354,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 return url;
             }
         }
-        
+
         // 处理抖音完整视频链接
         // 格式：https://www.douyin.com/video/视频ID
         if (url.includes('douyin.com/video/')) {
@@ -365,12 +365,12 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 return url;
             }
         }
-        
+
         // 如果已经是URL格式（以http://或https://或//开头），直接返回
         if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('//')) {
             return url;
         }
-        
+
         // 如果没有匹配到，返回原始值（可能是其他格式）
         return trimmed;
     };
@@ -379,7 +379,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const selectVideo = (video: CustomVideoItem) => {
         // 提取并处理URL
         const processedUrl = extractUrlFromIframe(video.url);
-        
+
         const videoSource: VideoSource = {
             id: video.id,
             title: video.title,
@@ -497,10 +497,9 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
             if (isFolder(node)) {
                 return (
                     <div key={node.id} className="select-none">
-                        <div 
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded group ${
-                                isEditing ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-100 cursor-pointer'
-                            }`}
+                        <div
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded group ${isEditing ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-100 cursor-pointer'
+                                }`}
                             style={{ paddingLeft: `${level * 20 + 8}px` }}
                         >
                             <button
@@ -593,11 +592,10 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 );
             } else {
                 return (
-                    <div 
-                        key={node.id} 
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded group ${
-                            isEditing ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-100 cursor-pointer'
-                        }`}
+                    <div
+                        key={node.id}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded group ${isEditing ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-100 cursor-pointer'
+                            }`}
                         style={{ paddingLeft: `${level * 20 + 24}px` }}
                         onClick={(e) => {
                             // 编辑状态下不触发播放
@@ -608,7 +606,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                     >
                         <FileVideo className="w-4 h-4 text-purple-500" />
                         {isEditing ? (
-                            <div 
+                            <div
                                 className="flex-1 flex flex-col gap-1"
                                 onClick={(e) => e.stopPropagation()}
                                 onMouseDown={(e) => e.stopPropagation()}
@@ -703,7 +701,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         e.preventDefault();
         e.stopPropagation();
         if (!videoContainerRef.current) return;
-        
+
         const rect = videoContainerRef.current.getBoundingClientRect();
         setIsResizing(true);
         resizeStartRef.current = {
@@ -712,7 +710,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
             startWidth: videoSize.width,
             startHeight: videoSize.height
         };
-        
+
         // 设置全局指针捕获
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
@@ -720,14 +718,14 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const handleResizeMove = (e: React.PointerEvent) => {
         if (!isResizing || !resizeStartRef.current) return;
         e.preventDefault();
-        
+
         const deltaX = e.clientX - resizeStartRef.current.x;
         const deltaY = e.clientY - resizeStartRef.current.y;
-        
+
         // 计算新尺寸（保持16:9比例或自由调整）
         const newWidth = Math.max(240, Math.min(width * 0.9, resizeStartRef.current.startWidth + deltaX));
         const newHeight = Math.max(135, Math.min(height * 0.9, resizeStartRef.current.startHeight + deltaY));
-        
+
         setVideoSize({ width: newWidth, height: newHeight });
     };
 
@@ -736,7 +734,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         e.preventDefault();
         setIsResizing(false);
         resizeStartRef.current = null;
-        
+
         // 释放指针捕获
         try {
             (e.target as HTMLElement).releasePointerCapture(e.pointerId);
@@ -749,27 +747,27 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const resetSize = () => {
         setVideoSize({ width: 480, height: 270 });
     };
-    
+
     // 重置透明度到默认值
     const resetOpacity = () => {
-        setOpacity(1.0);
+        setOpacity(0.85);
     };
 
     return (
         <div className="relative w-full h-full overflow-hidden bg-black">
             {/* 1. 视觉刺激背景层 */}
-            <canvas 
-                ref={canvasRef} 
-                width={width} 
-                height={height} 
-                className="absolute inset-0 block" 
+            <canvas
+                ref={canvasRef}
+                width={width}
+                height={height}
+                className="absolute inset-0 block"
             />
 
             {/* 2. 视频播放器层 & UI */}
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none p-4">
-                
+
                 {/* 控制栏 - 放置在播放器上方右侧 */}
-                <div 
+                <div
                     className="flex justify-end mb-2 pointer-events-none gap-2"
                     style={{ width: '480px', maxWidth: '100%' }}
                 >
@@ -792,7 +790,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             </select>
                         </div>
 
-                        <button 
+                        <button
                             onClick={() => {
                                 setShowMenu(!showMenu);
                                 setShowCustomPlaylist(false);
@@ -802,7 +800,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             <ListVideo className="w-4 h-4" />
                             默认视频
                         </button>
-                        <button 
+                        <button
                             onClick={() => {
                                 setShowCustomPlaylist(!showCustomPlaylist);
                                 setShowMenu(false);
@@ -826,9 +824,8 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                             setCurrentVideo(video);
                                             setShowMenu(false);
                                         }}
-                                        className={`w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 ${
-                                            currentVideo.id === video.id ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'
-                                        }`}
+                                        className={`w-full text-left px-4 py-3 text-sm hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0 ${currentVideo.id === video.id ? 'bg-blue-50 text-blue-600 font-bold' : 'text-slate-600'
+                                            }`}
                                     >
                                         {video.title}
                                     </button>
@@ -852,7 +849,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                         ×
                                     </button>
                                 </div>
-                                
+
                                 {/* 工具栏 */}
                                 <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
                                     <div className="flex gap-1">
@@ -903,7 +900,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 </div>
 
                 {/* 播放器容器 */}
-                <div 
+                <div
                     ref={videoContainerRef}
                     className="pointer-events-auto relative bg-black rounded-xl overflow-hidden shadow-2xl border-4 border-white/50 backdrop-blur-sm group"
                     style={{
@@ -923,7 +920,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             {currentVideo.url.includes('douyin.com') ? (
                                 <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900">
                                     <p className="text-white/80 text-sm mb-2">抖音视频播放</p>
-                                    <a 
+                                    <a
                                         href={currentVideo.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
@@ -936,11 +933,11 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                     </p>
                                 </div>
                             ) : (
-                                <iframe 
+                                <iframe
                                     key={currentVideo.id} // 确保切换视频时重新加载 iframe
                                     src={currentVideo.url}
                                     className="w-full h-full"
-                                    scrolling="no" 
+                                    scrolling="no"
                                     frameBorder="0"
                                     allowFullScreen={true}
                                     referrerPolicy="no-referrer"
@@ -949,14 +946,14 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             )}
                             {/* 控制按钮组 */}
                             <div className="absolute top-2 left-2 flex gap-2 z-20">
-                                <button 
+                                <button
                                     onClick={resetSize}
                                     className="p-2 bg-blue-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-blue-600 shadow-lg"
                                     title="重置窗口大小"
                                 >
                                     <Maximize2 className="w-4 h-4" />
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => setShowOpacityControl(!showOpacityControl)}
                                     className="p-2 bg-purple-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-purple-600 shadow-lg"
                                     title="调整透明度"
@@ -971,7 +968,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                         <span className="text-sm font-bold text-slate-800">
                                             {visionType === 'visual' ? '透明度' : '遮罩透明度'}
                                         </span>
-                                        <button 
+                                        <button
                                             onClick={resetOpacity}
                                             className="text-xs text-blue-600 hover:text-blue-800 font-bold"
                                         >
@@ -989,7 +986,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                     />
                                     <div className="flex justify-between text-xs text-slate-600 mt-1">
                                         <span>0%</span>
-                                            <span className="font-bold text-purple-600">{Math.round(opacity * 100)}%</span>
+                                        <span className="font-bold text-purple-600">{Math.round(opacity * 100)}%</span>
                                         <span>100%</span>
                                     </div>
                                 </div>
