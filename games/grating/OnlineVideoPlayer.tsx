@@ -84,8 +84,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
 
     const [showMenu, setShowMenu] = useState(false);
     const [showCustomPlaylist, setShowCustomPlaylist] = useState(false);
-
-
+    const [isPlaylistEditing, setIsPlaylistEditing] = useState(false);
 
     // 自定义播放列表状态
     const [customPlaylist, setCustomPlaylist] = useState<CustomFolder[]>([]);
@@ -119,6 +118,35 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
     const [isResizingPlaylist, setIsResizingPlaylist] = useState(false);
     const playlistDragStartRef = useRef<{ x: number; y: number; startX: number; startY: number } | null>(null);
     const playlistResizeStartRef = useRef<{ x: number; y: number; startWidth: number; startHeight: number } | null>(null);
+
+    // 响应式调整播放列表位置与大小
+    useEffect(() => {
+        if (!showCustomPlaylist) return;
+
+        setPlaylistSize(prevSize => {
+            const maxWidth = width * 0.9;
+            const maxHeight = height * 0.8;
+            const newWidth = Math.min(prevSize.width, maxWidth);
+            const newHeight = Math.min(prevSize.height, maxHeight);
+
+            if (newWidth !== prevSize.width || newHeight !== prevSize.height) {
+                return { width: Math.max(300, newWidth), height: Math.max(200, newHeight) };
+            }
+            return prevSize;
+        });
+
+        setPlaylistPos(prevPos => {
+            const maxX = width - playlistSize.width;
+            const maxY = height - playlistSize.height;
+            const newX = Math.max(0, Math.min(prevPos.x, maxX));
+            const newY = Math.max(0, Math.min(prevPos.y, maxY));
+
+            if (newX !== prevPos.x || newY !== prevPos.y) {
+                return { x: newX, y: newY };
+            }
+            return prevPos;
+        });
+    }, [width, height, showCustomPlaylist, playlistSize.width, playlistSize.height]);
 
 
     // 透明度状态（视觉刺激时：调视频整体透明度；立体视时：调红蓝遮罩透明度）
@@ -567,6 +595,11 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             className={`flex items-center gap-2 px-2 py-1.5 rounded group ${isEditing ? 'bg-blue-50 border border-blue-200' : 'hover:bg-slate-100 cursor-pointer'
                                 }`}
                             style={{ paddingLeft: `${level * 20 + 8}px` }}
+                            onClick={() => {
+                                if (!isPlaylistEditing && !isEditing) {
+                                    toggleFolder(node.id);
+                                }
+                            }}
                         >
                             <button
                                 onClick={(e) => {
@@ -613,39 +646,51 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             ) : (
                                 <>
                                     <span className="flex-1 text-sm text-slate-700">{node.name}</span>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => {
-                                                setEditingNode({ id: node.id, type: 'folder', parentPath: path });
-                                                setNewNodeData({ name: node.name });
-                                            }}
-                                            className="p-1 hover:bg-blue-100 rounded"
-                                            title="重命名"
-                                        >
-                                            <Edit2 className="w-3 h-3 text-blue-600" />
-                                        </button>
-                                        <button
-                                            onClick={() => addFolder(currentPath)}
-                                            className="p-1 hover:bg-green-100 rounded"
-                                            title="添加子文件夹"
-                                        >
-                                            <FolderPlus className="w-3 h-3 text-green-600" />
-                                        </button>
-                                        <button
-                                            onClick={() => addVideo(currentPath)}
-                                            className="p-1 hover:bg-purple-100 rounded"
-                                            title="添加视频"
-                                        >
-                                            <FileVideo className="w-3 h-3 text-purple-600" />
-                                        </button>
-                                        <button
-                                            onClick={() => deleteNode(currentPath)}
-                                            className="p-1 hover:bg-red-100 rounded"
-                                            title="删除"
-                                        >
-                                            <Trash2 className="w-3 h-3 text-red-600" />
-                                        </button>
-                                    </div>
+                                    {isPlaylistEditing && (
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setEditingNode({ id: node.id, type: 'folder', parentPath: path });
+                                                    setNewNodeData({ name: node.name });
+                                                }}
+                                                className="p-1 hover:bg-blue-100 rounded"
+                                                title="重命名"
+                                            >
+                                                <Edit2 className="w-3 h-3 text-blue-600" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    addFolder(currentPath);
+                                                }}
+                                                className="p-1 hover:bg-green-100 rounded"
+                                                title="添加子文件夹"
+                                            >
+                                                <FolderPlus className="w-3 h-3 text-green-600" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    addVideo(currentPath);
+                                                }}
+                                                className="p-1 hover:bg-purple-100 rounded"
+                                                title="添加视频"
+                                            >
+                                                <FileVideo className="w-3 h-3 text-purple-600" />
+                                            </button>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteNode(currentPath);
+                                                }}
+                                                className="p-1 hover:bg-red-100 rounded"
+                                                title="删除"
+                                            >
+                                                <Trash2 className="w-3 h-3 text-red-600" />
+                                            </button>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -731,29 +776,31 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                 <span className={`flex-1 text-sm ${currentVideo.id === node.id ? 'text-blue-600 font-bold' : 'text-slate-700'}`}>
                                     {node.title}
                                 </span>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingNode({ id: node.id, type: 'video', parentPath: path });
-                                            setNewNodeData({ name: node.title, url: node.url });
-                                        }}
-                                        className="p-1 hover:bg-blue-100 rounded"
-                                        title="编辑"
-                                    >
-                                        <Edit2 className="w-3 h-3 text-blue-600" />
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            deleteNode(currentPath);
-                                        }}
-                                        className="p-1 hover:bg-red-100 rounded"
-                                        title="删除"
-                                    >
-                                        <Trash2 className="w-3 h-3 text-red-600" />
-                                    </button>
-                                </div>
+                                {isPlaylistEditing && (
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingNode({ id: node.id, type: 'video', parentPath: path });
+                                                setNewNodeData({ name: node.title, url: node.url });
+                                            }}
+                                            className="p-1 hover:bg-blue-100 rounded"
+                                            title="编辑"
+                                        >
+                                            <Edit2 className="w-3 h-3 text-blue-600" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                deleteNode(currentPath);
+                                            }}
+                                            className="p-1 hover:bg-red-100 rounded"
+                                            title="删除"
+                                        >
+                                            <Trash2 className="w-3 h-3 text-red-600" />
+                                        </button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -831,9 +878,16 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         const dx = e.clientX - playlistDragStartRef.current.x;
         const dy = e.clientY - playlistDragStartRef.current.y;
 
+        const newX = playlistDragStartRef.current.startX + dx;
+        const newY = playlistDragStartRef.current.startY + dy;
+
+        // 边界检查
+        const maxX = width - playlistSize.width;
+        const maxY = height - playlistSize.height;
+
         setPlaylistPos({
-            x: playlistDragStartRef.current.startX + dx,
-            y: playlistDragStartRef.current.startY + dy
+            x: Math.max(0, Math.min(newX, maxX)),
+            y: Math.max(0, Math.min(newY, maxY))
         });
     };
 
@@ -862,9 +916,16 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
         const dx = e.clientX - playlistResizeStartRef.current.x;
         const dy = e.clientY - playlistResizeStartRef.current.y;
 
+        const newWidth = Math.max(300, playlistResizeStartRef.current.startWidth + dx);
+        const newHeight = Math.max(200, playlistResizeStartRef.current.startHeight + dy);
+
+        // 限制最大尺寸不超出屏幕
+        const maxWidth = width - playlistPos.x;
+        const maxHeight = height - playlistPos.y;
+
         setPlaylistSize({
-            width: Math.max(300, playlistResizeStartRef.current.startWidth + dx),
-            height: Math.max(200, playlistResizeStartRef.current.startHeight + dy)
+            width: Math.min(newWidth, maxWidth),
+            height: Math.min(newHeight, maxHeight)
         });
     };
 
@@ -894,6 +955,16 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 height={height}
                 className="absolute inset-0 block"
             />
+
+            {/* 页面右上角固定编辑按钮 - 避开 GamePlayer 的暂停和刷新按钮 */}
+            <button
+                onClick={() => setIsPlaylistEditing(!isPlaylistEditing)}
+                className={`fixed top-4 right-32 z-[101] flex items-center justify-center w-9 h-9 rounded-full shadow-xl transition-all ${isPlaylistEditing ? 'bg-blue-600 text-white ring-4 ring-blue-200' : 'bg-white/90 text-slate-600 hover:bg-white border border-slate-200'
+                    }`}
+                title={isPlaylistEditing ? "退出编辑" : "进入编辑"}
+            >
+                <Edit2 className={`w-5 h-5 ${isPlaylistEditing ? 'animate-pulse' : ''}`} />
+            </button>
 
             {/* 2. 视频播放器层 & UI */}
             <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none p-4">
@@ -934,6 +1005,16 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                         </button>
                         <button
                             onClick={() => {
+                                if (!showCustomPlaylist) {
+                                    // 开启时进行初始位置和大小的响应式校准
+                                    const defaultWidth = Math.min(384, width * 0.8);
+                                    const defaultHeight = Math.min(500, height * 0.8);
+                                    setPlaylistSize({ width: defaultWidth, height: defaultHeight });
+                                    setPlaylistPos({
+                                        x: (width - defaultWidth) / 2,
+                                        y: (height - defaultHeight) / 2
+                                    });
+                                }
                                 setShowCustomPlaylist(!showCustomPlaylist);
                                 setShowMenu(false);
                             }}
@@ -1060,16 +1141,17 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                             )}
                             {/* 拖拽调整大小手柄 */}
                             <div
-                                className="absolute bottom-0 right-0 w-6 h-6 bg-white/80 rounded-tl-lg cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center"
+                                className="absolute bottom-0 right-0 w-8 h-8 bg-white/80 rounded-tl-lg cursor-nwse-resize opacity-0 group-hover:opacity-100 transition-opacity z-20 flex items-center justify-center touch-none"
                                 onPointerDown={handleResizeStart}
                                 onPointerMove={handleResizeMove}
                                 onPointerUp={handleResizeEnd}
                                 onPointerCancel={handleResizeEnd}
                                 style={{
-                                    cursor: isResizing ? 'nwse-resize' : 'nwse-resize'
+                                    cursor: isResizing ? 'nwse-resize' : 'nwse-resize',
+                                    touchAction: 'none'
                                 }}
                             >
-                                <div className="w-3 h-3 border-2 border-slate-600 rounded-sm"></div>
+                                <div className="w-4 h-4 border-r-2 border-b-2 border-slate-600"></div>
                             </div>
                             {/* 立体视遮罩：左红右蓝，透明度由 slider 控制 */}
                             {visionType === 'stereo' && (
@@ -1119,11 +1201,12 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                 >
                     {/* 头部 - 拖拽区域 */}
                     <div
-                        className="playlist-header px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center justify-between border-b border-purple-400 cursor-move select-none"
+                        className="playlist-header px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-center justify-between border-b border-purple-400 cursor-move select-none touch-none"
                         onPointerDown={handlePlaylistDragStart}
                         onPointerMove={handlePlaylistDragMove}
                         onPointerUp={handlePlaylistDragEnd}
                         onPointerCancel={handlePlaylistDragEnd}
+                        style={{ touchAction: 'none' }}
                     >
                         <div className="flex items-center gap-2 pointer-events-none">
                             <Folder className="w-5 h-5" />
@@ -1140,32 +1223,38 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                     {/* 工具栏 */}
                     <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-hidden">
                         <div className="flex gap-1">
-                            <button
-                                onClick={() => addFolder([])}
-                                className="px-2 py-1 bg-green-500 text-white rounded text-xs font-bold hover:bg-green-600 flex items-center gap-1"
-                                title="添加文件夹"
-                            >
-                                <FolderPlus className="w-3 h-3" />
-                                文件夹
-                            </button>
+                            {isPlaylistEditing && (
+                                <button
+                                    onClick={() => addFolder([])}
+                                    className="px-2 py-1 bg-green-500 text-white rounded text-xs font-bold hover:bg-green-600 flex items-center gap-1"
+                                    title="添加文件夹"
+                                >
+                                    <FolderPlus className="w-3 h-3" />
+                                    文件夹
+                                </button>
+                            )}
                         </div>
                         <div className="flex gap-1">
-                            <button
-                                onClick={exportPlaylist}
-                                className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600 flex items-center gap-1"
-                                title="导出"
-                            >
-                                <Download className="w-3 h-3" />
-                                导出
-                            </button>
-                            <button
-                                onClick={importPlaylist}
-                                className="px-2 py-1 bg-orange-500 text-white rounded text-xs font-bold hover:bg-orange-600 flex items-center gap-1"
-                                title="导入"
-                            >
-                                <UploadIcon className="w-3 h-3" />
-                                导入
-                            </button>
+                            {isPlaylistEditing && (
+                                <>
+                                    <button
+                                        onClick={exportPlaylist}
+                                        className="px-2 py-1 bg-blue-500 text-white rounded text-xs font-bold hover:bg-blue-600 flex items-center gap-1"
+                                        title="导出"
+                                    >
+                                        <Download className="w-3 h-3" />
+                                        导出
+                                    </button>
+                                    <button
+                                        onClick={importPlaylist}
+                                        className="px-2 py-1 bg-orange-500 text-white rounded text-xs font-bold hover:bg-orange-600 flex items-center gap-1"
+                                        title="导入"
+                                    >
+                                        <UploadIcon className="w-3 h-3" />
+                                        导入
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -1184,13 +1273,14 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
 
                     {/* 缩放手柄 */}
                     <div
-                        className="absolute bottom-0 right-0 w-6 h-6 bg-slate-100/50 cursor-nwse-resize flex items-center justify-center opacity-0 group-hover/playlist:opacity-100 transition-opacity"
+                        className="absolute bottom-0 right-0 w-8 h-8 bg-slate-100/50 cursor-nwse-resize flex items-center justify-center opacity-0 group-hover/playlist:opacity-100 transition-opacity touch-none"
                         onPointerDown={handlePlaylistResizeStart}
                         onPointerMove={handlePlaylistResizeMove}
                         onPointerUp={handlePlaylistResizeEnd}
                         onPointerCancel={handlePlaylistResizeEnd}
+                        style={{ touchAction: 'none' }}
                     >
-                        <div className="w-1.5 h-1.5 border-r-2 border-b-2 border-slate-400 rotate-45 mb-1 mr-1"></div>
+                        <div className="w-2.5 h-2.5 border-r-2 border-b-2 border-slate-400 rotate-45 mb-1 mr-1"></div>
                     </div>
                 </div>
             )}
