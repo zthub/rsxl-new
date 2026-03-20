@@ -1087,7 +1087,7 @@ export const OnlineVideoPlayer: React.FC<GameComponentProps> = ({ width, height,
                                     className="w-full h-full"
                                     scrolling="no"
                                     frameBorder="0"
-                                    allowFullScreen={true}
+                                    sandbox="allow-scripts allow-same-origin allow-forms"
                                     referrerPolicy="no-referrer"
                                     title={currentVideo.title}
                                 />
