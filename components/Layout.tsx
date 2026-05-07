@@ -1,5 +1,5 @@
-import React from 'react';
-import { Home, Settings, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, Settings, User, Info } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
@@ -10,6 +10,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
   const isHome = location.pathname === '/';
   const isGamePage = location.pathname.includes('/game/');
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -35,12 +37,71 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
               <User className="w-6 h-6 text-slate-600" />
             </button>
-            <button className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
+            <button
+              onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+              className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors relative"
+            >
               <Settings className="w-6 h-6 text-slate-600" />
             </button>
           </nav>
         </div>
       </header>
+
+      {/* Settings Dropdown Menu */}
+      {showSettingsMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setShowSettingsMenu(false)}
+          />
+          <div className="fixed top-16 right-4 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 min-w-[160px] animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={() => {
+                setShowSettingsMenu(false);
+                setShowAboutModal(true);
+              }}
+              className="w-full px-4 py-3 text-left hover:bg-slate-50 transition-colors flex items-center gap-3 text-slate-700 font-medium"
+            >
+              <Info size={18} />
+              关于
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* About Modal */}
+      {showAboutModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowAboutModal(false)}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 shadow-2xl max-w-sm w-full relative animate-in fade-in zoom-in duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-slate-800 mb-4">关于</h3>
+            <div className="space-y-4">
+              <p className="text-slate-500 text-sm">
+                点击下方链接了解更多信息：
+              </p>
+              <a
+                href="https://dlsc-production.up.railway.app/s3CsLW"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-center bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95"
+              >
+                访问链接
+              </a>
+              <button
+                onClick={() => setShowAboutModal(false)}
+                className="w-full mt-2 text-slate-500 hover:text-slate-700 font-medium py-2 transition-colors"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content - 游戏页面占满全屏，普通页面保持居中和内边距 */}
       <main className={`flex-grow w-full ${isGamePage ? 'p-0 overflow-hidden' : 'max-w-5xl mx-auto p-4 md:p-6'}`}>
