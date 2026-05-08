@@ -85,7 +85,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 点击下方链接了解更多信息：
               </p>
               <a
-                href="https://dlsc-production.up.railway.app/BUvBI4"
+                href="https://dlsc.rsxl.xyz/BUvBI4"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-center bg-brand-blue hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95"
